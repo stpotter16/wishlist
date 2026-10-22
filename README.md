@@ -1,8 +1,8 @@
-# go-template
+# Wishlist 
 
-A starter template for HTML based services built in Go with a Sqlite data layer
+A wishlist app
 
 # How to use
 
-- Change go module name (go-template, Go Template, Go-Template, GO_TEMPLATE)
+- Change go module name (go-template, Wishlist, Go-Template, GO_TEMPLATE)
 - Update README
