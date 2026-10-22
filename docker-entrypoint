@@ -42,7 +42,7 @@ if [[ "${IS_LITESTREAM_ENABLED}" == 'true' ]]; then
     /app/litestream restore -if-replica-exists "${WISHLIST_DB_FILE}"
   fi
 
-  # Let Litestream start go-app-starter as a child process
+  # Let Litestream start the app as a child process.
   /app/litestream replicate -exec "$APP_LAUNCH_CMD"
 else
   echo "Starting without litestream"

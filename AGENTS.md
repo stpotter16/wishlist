@@ -1,4 +1,89 @@
-Bootstrapped from [mtlynch's sourc](https://codeberg.org/mtlynch/go-app-starter/src/branch/master/AGENTS.md#)
+Bootstrapped from [mtlynch's source](https://codeberg.org/mtlynch/go-app-starter/src/branch/master/AGENTS.md)
+
+# Project overview
+
+Wishlist is a web app for gift exchanges.
+
+- Each participant keeps a wishlist of items they want.
+- Givers claim items so other givers don't buy the same thing.
+  - The recipient must never see which of their items are claimed or by whom.
+- Stack: Go `net/http` server, Go `html/template` views styled with Tailwind, SQLite (with Litestream replication in production), deployed to Fly.io.
+
+## Starter scaffolding
+
+- The repo grew out of a starter template. The "clicks" feature (`clicks` table, `POST /clicks`, the dashboard in `pages/index.html`, `internal/store/sqlite/clicks.go`, `internal/types/click.go`) is placeholder code.
+  - Replace it as real wishlist features land, and delete it once nothing depends on it.
+  - Do not build new features on top of it.
+
+## Layout
+
+- `cmd/server/main.go`: entrypoint; reads configuration from environment variables.
+- `internal/handlers/`: routes (`routes.go`), HTTP handlers, middleware, sessions, templates, and embedded static files.
+- `internal/store/`: the `Store` interface and its SQLite implementation.
+  - Migrations live in `internal/store/sqlite/migrations/` as numbered `.sql` files.
+- `internal/types/`: domain types shared across packages.
+- `style/input.css`: Tailwind source and design tokens.
+- `dev-scripts/`: build, lint, run, and deploy scripts that the Makefile wraps.
+
+# Development commands
+
+- Run every command inside the Nix dev shell (`make shell`), which provides Go, Node, SQLite, Litestream, shellcheck, sqlfluff, and flyctl.
+- Prefer the Makefile targets below over invoking tools directly.
+
+## Configuration
+
+- The server requires these environment variables:
+  - `WISHLIST_DB_PATH`: directory that holds `wishlist.sqlite`.
+  - `WISHLIST_SESSION_ENV_KEY`: session signing key. Generate one with `make secrets/hmac`.
+  - `PORT` (optional): listen port, defaults to `8080`.
+- Copy `.env.example` to `.env`, fill it in, and `source .env` before running the server.
+- Production also reads `LITESTREAM_BUCKET`, `LITESTREAM_ENDPOINT`, `LITESTREAM_ACCESS_KEY_ID`, and `LITESTREAM_SECRET_ACCESS_KEY`. When `LITESTREAM_BUCKET` is unset, `docker-entrypoint` starts the app without replication.
+
+## Make targets
+
+- `make server/live`: the main dev loop. Runs `modd`, which rebuilds and restarts the server on Go/template changes and recompiles Tailwind CSS on template or `input.css` changes.
+- `make server/build`: build the dev binary to `./tmp/server`.
+- `make server/run`: build, then run `./tmp/server`.
+- `make test/go`: run Go unit tests.
+- `make lint/go`: run `gofmt -s -w`. This rewrites files in place rather than only reporting problems.
+- `make lint/shell`: run shellcheck on every bash script tracked by git.
+- `make lint/sql`: run sqlfluff with the SQLite dialect.
+- `make lint/frontend`: run `prettier --check` over the repo, including Go HTML templates.
+- `make secrets/hmac` / `make secrets/gcm`: generate random keys.
+- `make server/deploy`: run `fly deploy`. Do not deploy unless the user explicitly asks.
+
+# Frontend
+
+## Templates
+
+- Views are Go `html/template` files in `internal/handlers/templates/`.
+  - `layouts/base.html` renders the document shell and defines the `title` and `script-tags` blocks.
+  - `layouts/app.html` renders the authenticated app chrome (main column and bottom nav) and defines the `page-content` block.
+  - `pages/*.html` fill in those blocks.
+- Prettier with `prettier-plugin-go-template` formats templates. Run `npx prettier --write <file>` after editing them.
+
+## Tailwind CSS
+
+- Tailwind v4 compiles `style/input.css` into `internal/handlers/static/css/style.css`.
+- `style.css` is generated but committed, and the Go binary embeds it via `go:embed`. Neither the Dockerfile nor the build scripts run Tailwind.
+  - After changing templates or `input.css`, regenerate the CSS and commit it with the change, or production serves stale styles.
+  - `make server/live` regenerates it automatically. To regenerate manually, run `npx @tailwindcss/cli -i style/input.css -o internal/handlers/static/css/style.css --minify`.
+- Never hand-edit `style.css`.
+
+## Design tokens
+
+- `input.css` drops Tailwind's default palette (`--color-*: initial`). Only the semantic tokens defined in `@theme` exist: `page`, `surface`, `border`, `fg`, `muted`, `subtle`, `accent`, `accent-hover`, `on-accent`, `danger`, `danger-surface`.
+  - Use them as normal utilities (`bg-page`, `text-muted`, `border-border`).
+  - Raw palette classes like `bg-gray-100` silently produce no styles.
+- Dark mode redefines the same tokens under `prefers-color-scheme: dark`. Do not add `dark:` variants for color.
+- When a new color role is needed, add a token in both the light and dark blocks rather than reaching for a raw color.
+
+## JavaScript
+
+- The Content Security Policy only allows scripts that carry the per-request nonce. Every `<script>` tag needs `nonce="{{ .CspNonce }}"`.
+- Do not use `alert()` or `confirm()`.
+- Do not embed Go template conditionals inside JavaScript. Instead, render a data attribute or hidden input in HTML and read it from JS.
+
 # Go
 
 ## Defining symbols
@@ -217,12 +302,6 @@ If you learned that methods shouldn't be exported just for testing, add to `AGEN
 - Avoid string substitution to inject large shell scripts into the flake.
 - When communicating executable locations from the flake to shell scripts, prefer updating `PATH` so scripts can execute binaries by name.
 
-# npm modules
-
-- When dependencies change, update `npmDepsHash` by running `nix build` with a fake hash and using the correct hash from the error message.
-- Depend on exact versions of npm packages rather than package minimums.
-  - Imprecise versions create discrepancies between npm and flake.nix, especially for playwright.
-
 # dev-scripts
 
 - Use scripts in the dev-scripts to build, run, and test code where possible.
@@ -242,6 +321,11 @@ If you learned that methods shouldn't be exported just for testing, add to `AGEN
 - Do not hard wrap Markdown text outside code snippets.
 - Generally, prefer bulleted lists to tables.
 
+### Headings
+
+- Use sentence casing and not title casing.
+- Do not add trailing periods.
+
 # Shell scripts
 
 - Attempt to break bash lines at 80 characters, but don't layer in complexity to fit within 80 characters.
@@ -250,23 +334,9 @@ If you learned that methods shouldn't be exported just for testing, add to `AGEN
 - When removing a command-line argument, delete it cleanly.
   - Do not add compatibility checks for the old interface.
 
-### Headings
-
-- Use sentence casing and not title casing.
-- Do not add trailing periods.
-
-## JavaScript
-
-- Do not use `alert()` or `confirm()`.
-  - Use `window.dialogManager.alert()` and `window.dialogManager.confirm()` instead.
-  - For htmx, use `hx-confirm` which hooks into the custom dialog automatically.
-- Do not embed Go template conditionals inside JavaScript. Instead, render a data attribute or hidden input in HTML and read it from JS.
-
 # Testing
 
-- After every code change, run `nix flake check` before presenting the solution to the user.
-- After every code change, run `dev-scripts/git-hooks/pre-commit` before presenting the solution to the user.
-- To run unit tests, run `./dev-scripts/run-go-tests`
+- After every code change, run `make test/go` and the lint targets relevant to the files you touched (`make lint/go`, `lint/shell`, `lint/sql`, `lint/frontend`) before presenting the solution to the user.
 - Do not write to the filesystem in tests.
   - Design production interfaces around file readers or filesystem interfaces rather than the local filesystem.
 - When writing tests to verify a bugfix, follow TDD conventions: write the test with the failing test first, verify the test fails, fix the bug, and verify that the test passes
@@ -322,56 +392,6 @@ def test_increase_score(self):
                    account_manager.get_score(username='joe123'))
 ```
 
-## Playwright tests
-
-### Test realistic user flows
-
-- Playwright tests should begin with the user landing on the root route and navigating to different app pages by clicking page elements.
-  - The tests should not simulate the user navigating the app by changing the URL manually.
-  - The tests should assert that the URL has changed at times when we expect a URL change, but the app should cause the change, not the tests.
-
-- Run end-to-end tests with `nix build .#e2e-tests`.
-  - Do not run Playwright directly unless the user explicitly asks for that workflow.
-
-### Test user-visible behavior
-
-- Test what end users see and interact with, not implementation details.
-- Avoid assertions based on internal function names, CSS class names, or data structures.
-
-### Test isolation
-
-- Each test should be fully independent: its own local storage, session storage, cookies, and data.
-- Use `beforeEach` hooks for shared setup (e.g., navigation, login) rather than sharing state across tests.
-
-### Use locators
-
-- Prefer user-facing locators in this order: role, text, test ID.
-  - `page.getByRole('button', { name: 'Submit' })`
-  - `page.getByText('Welcome')`
-  - `page.getByTestId('submit-btn')`
-- Avoid CSS selectors and XPath — the DOM changes frequently and they couple tests to implementation.
-- Narrow locators to a specific section of the page using chaining and filtering:
-  ```ts
-  await page
-    .getByRole("listitem")
-    .filter({ hasText: "Product 2" })
-    .getByRole("button", { name: "Add to cart" })
-    .click();
-  ```
-
-### Use web-first assertions
-
-- Use `expect(locator).toBeVisible()` and similar web-first assertions — they auto-wait for conditions to be met.
-- Do not use `expect(await locator.isVisible()).toBe(true)` — `isVisible()` resolves immediately without waiting.
-
-### Parallelism
-
-- Playwright runs test files in parallel by default — keep tests independent to take full advantage of this.
-- For many independent tests within a single file, enable parallel mode explicitly:
-  ```ts
-  test.describe.configure({ mode: "parallel" });
-  ```
-
 # Documentation
 
 - Use active voice in documentation.
@@ -401,4 +421,3 @@ def test_increase_score(self):
 
 - Do not attempt to push, pull, or fetch from remotes unless the user instructs you to do so directly.
   - You do not have access to any private git repos, so most attempts will fail.
-
