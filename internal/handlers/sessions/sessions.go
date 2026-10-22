@@ -18,7 +18,7 @@ type contextKey struct {
 }
 
 const SESSION_KEY = "session"
-const SESSION_ENV_KEY = "GO_TEMPLATE_SESSION_ENV_KEY"
+const SESSION_ENV_KEY = "WISHLIST_SESSION_ENV_KEY"
 
 type Session struct {
 	ID        string

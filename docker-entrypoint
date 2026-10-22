@@ -33,13 +33,13 @@ if [[ "${IS_LITESTREAM_ENABLED}" == 'true' ]]; then
   echo "LITESTREAM_BUCKET=${LITESTREAM_BUCKET}"
   echo "LITESTREAM_ENDPOINT=${LITESTREAM_ENDPOINT}"
 
-  GO_TEMPLATE_DB_FILE="${GO_TEMPLATE_DB_PATH}/go-template.sqlite"
-  if [[ -f "$GO_TEMPLATE_DB_FILE" ]]; then
-    echo "Existing database is $(stat -c %s "${GO_TEMPLATE_DB_FILE}") bytes"
+  WISHLIST_DB_FILE="${WISHLIST_DB_PATH}/go-template.sqlite"
+  if [[ -f "$WISHLIST_DB_FILE" ]]; then
+    echo "Existing database is $(stat -c %s "${WISHLIST_DB_FILE}") bytes"
   else
     echo "No existing database found"
     # Restore database from remote storage.
-    /app/litestream restore -if-replica-exists "${GO_TEMPLATE_DB_FILE}"
+    /app/litestream restore -if-replica-exists "${WISHLIST_DB_FILE}"
   fi
 
   # Let Litestream start go-app-starter as a child process
