@@ -1,1 +1,48 @@
 @import "tailwindcss";
+
+/*
+ * Semantic color tokens. Templates use these names (bg-page, text-muted,
+ * bg-accent, ...) instead of raw palette colors, so the palette can change here
+ * without touching templates. Dark mode overrides the same tokens below, so
+ * templates don't need dark: variants for color.
+ */
+@theme {
+  /* Drop Tailwind's default palette so only these tokens are available. */
+  --color-*: initial;
+
+  --color-page: oklch(0.985 0.008 75);
+  --color-surface: oklch(0.96 0.016 70);
+  --color-border: oklch(0.88 0.022 65);
+  --color-fg: oklch(0.27 0.03 50);
+  --color-muted: oklch(0.52 0.03 55);
+  --color-subtle: oklch(0.8 0.03 60);
+
+  --color-accent: oklch(0.56 0.15 40);
+  --color-accent-hover: oklch(0.5 0.15 40);
+  --color-on-accent: oklch(0.99 0.01 75);
+
+  --color-danger: oklch(0.45 0.15 25);
+  --color-danger-surface: oklch(0.93 0.04 25);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-page: oklch(0.19 0.015 50);
+    --color-surface: oklch(0.24 0.02 50);
+    --color-border: oklch(0.33 0.022 50);
+    --color-fg: oklch(0.94 0.015 75);
+    --color-muted: oklch(0.72 0.025 65);
+    --color-subtle: oklch(0.4 0.025 55);
+
+    --color-accent: oklch(0.7 0.14 45);
+    --color-accent-hover: oklch(0.76 0.13 50);
+    --color-on-accent: oklch(0.2 0.02 45);
+
+    --color-danger: oklch(0.85 0.07 25);
+    --color-danger-surface: oklch(0.3 0.07 25);
+  }
+}
+
+:root {
+  color-scheme: light dark;
+}

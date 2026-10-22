@@ -10,9 +10,7 @@
     {{ block "script-tags" . }}{{ end }}
     <title>{{ block "title" . }}Wishlist{{ end }}</title>
   </head>
-  <body
-    class="bg-white text-zinc-900 antialiased dark:bg-zinc-950 dark:text-zinc-100"
-  >
+  <body class="bg-page text-fg antialiased">
     {{ template "content" . }}
   </body>
 </html>
