@@ -44,6 +44,7 @@ Wishlist is a web app for gift exchanges.
 - `make server/live`: the main dev loop. Runs `modd`, which rebuilds and restarts the server on Go/template changes and recompiles Tailwind CSS on template or `input.css` changes.
 - `make server/build`: build the dev binary to `./tmp/server`.
 - `make server/run`: build, then run `./tmp/server`.
+- `make css`: compile Tailwind CSS (see [Tailwind CSS](#tailwind-css)).
 - `make test/go`: run Go unit tests.
 - `make lint/go`: run `gofmt -s -w`. This rewrites files in place rather than only reporting problems.
 - `make lint/shell`: run shellcheck on every bash script tracked by git.
@@ -67,7 +68,7 @@ Wishlist is a web app for gift exchanges.
 - Tailwind v4 compiles `style/input.css` into `internal/handlers/static/css/style.css`.
 - `style.css` is generated but committed, and the Go binary embeds it via `go:embed`. Neither the Dockerfile nor the build scripts run Tailwind.
   - After changing templates or `input.css`, regenerate the CSS and commit it with the change, or production serves stale styles.
-  - `make server/live` regenerates it automatically. To regenerate manually, run `npx @tailwindcss/cli -i style/input.css -o internal/handlers/static/css/style.css --minify`.
+  - `make server/live` regenerates it automatically. To regenerate manually, run `make css`.
 - Never hand-edit `style.css`.
 
 ## Design tokens

@@ -15,6 +15,10 @@ server/deploy:
 	./dev-scripts/deploy.sh
 
 
+css:
+	./dev-scripts/build-css.sh
+
+
 secrets/hmac:
 	xxd -l32 /dev/urandom | xxd -r -ps | base64 | tr -d = | tr + - | tr / _
 
