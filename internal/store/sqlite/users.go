@@ -6,8 +6,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/stpotter16/go-template/internal/store"
-	"github.com/stpotter16/go-template/internal/types"
+	"github.com/stpotter16/wishlist/internal/store"
+	"github.com/stpotter16/wishlist/internal/types"
 )
 
 func (s Store) GetUserByUsername(ctx context.Context, username string) (types.User, error) {

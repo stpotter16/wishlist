@@ -4,5 +4,5 @@ A wishlist app
 
 # How to use
 
-- Change go module name (go-template, Wishlist, Wishlist, WISHLIST)
+- Change go module name (wishlist, Wishlist, Wishlist, WISHLIST)
 - Update README

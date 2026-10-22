@@ -3,10 +3,10 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/stpotter16/go-template/internal/handlers/authentication"
-	"github.com/stpotter16/go-template/internal/handlers/middleware"
-	"github.com/stpotter16/go-template/internal/handlers/sessions"
-	"github.com/stpotter16/go-template/internal/store"
+	"github.com/stpotter16/wishlist/internal/handlers/authentication"
+	"github.com/stpotter16/wishlist/internal/handlers/middleware"
+	"github.com/stpotter16/wishlist/internal/handlers/sessions"
+	"github.com/stpotter16/wishlist/internal/store"
 )
 
 func NewServer(

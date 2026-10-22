@@ -4,9 +4,9 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/stpotter16/go-template/internal/handlers/authentication"
-	"github.com/stpotter16/go-template/internal/handlers/sessions"
-	"github.com/stpotter16/go-template/internal/parse"
+	"github.com/stpotter16/wishlist/internal/handlers/authentication"
+	"github.com/stpotter16/wishlist/internal/handlers/sessions"
+	"github.com/stpotter16/wishlist/internal/parse"
 )
 
 func loginPost(authenticator authentication.Authenticator, sessionManager sessions.SessionManger) http.HandlerFunc {

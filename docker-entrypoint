@@ -26,14 +26,14 @@ readonly IS_LITESTREAM_ENABLED
 # Echo commands to stdout.
 set -x
 
-APP_LAUNCH_CMD="/app/go-template"
+APP_LAUNCH_CMD="/app/wishlist"
 
 if [[ "${IS_LITESTREAM_ENABLED}" == 'true' ]]; then
   /app/litestream version
   echo "LITESTREAM_BUCKET=${LITESTREAM_BUCKET}"
   echo "LITESTREAM_ENDPOINT=${LITESTREAM_ENDPOINT}"
 
-  WISHLIST_DB_FILE="${WISHLIST_DB_PATH}/go-template.sqlite"
+  WISHLIST_DB_FILE="${WISHLIST_DB_PATH}/wishlist.sqlite"
   if [[ -f "$WISHLIST_DB_FILE" ]]; then
     echo "Existing database is $(stat -c %s "${WISHLIST_DB_FILE}") bytes"
   else
