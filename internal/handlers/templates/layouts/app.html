@@ -2,8 +2,18 @@
   <main class="max-w-lg mx-auto px-4 pt-4 pb-24">
     {{ block "page-content" . }}{{ end }}
   </main>
-  <nav class="dock">
-    <a href="/" class="{{ if eq .ActivePage "dashboard" }}dock-active{{ end }}">
+  <nav
+    class="fixed inset-x-0 bottom-0 flex h-16 items-stretch border-t border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950"
+  >
+    <a
+      href="/"
+      class="flex flex-1 flex-col items-center justify-center gap-1 {{ if eq .ActivePage "dashboard" }}
+        text-indigo-600 dark:text-indigo-400
+      {{ else }}
+        text-zinc-500 hover:text-zinc-900 dark:text-zinc-400
+        dark:hover:text-zinc-100
+      {{ end }}"
+    >
       <svg
         xmlns="http://www.w3.org/2000/svg"
         class="size-5"
@@ -18,7 +28,7 @@
           d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
         />
       </svg>
-      <span class="dock-label">Dashboard</span>
+      <span class="text-xs">Dashboard</span>
     </a>
   </nav>
 {{ end }}
