@@ -17,7 +17,10 @@ func NewServer(
 	mux := http.NewServeMux()
 	addRoutes(mux, store, sessionManager, authenticator)
 	// CrossOriginProtection rejects cross-origin, state-changing browser
-	// requests, which protects every POST, PUT, and DELETE from CSRF.
+	// requests, which protects every POST, PUT, and DELETE from CSRF. It relies
+	// on the browser sending Sec-Fetch-Site or Origin, and lets requests with
+	// neither header through. AGENTS.md documents these assumptions under
+	// "Browser support".
 	handler := http.NewCrossOriginProtection().Handler(mux)
 	handler = middleware.CspMiddleware(handler)
 	handler = middleware.LoggingWrapper(handler)

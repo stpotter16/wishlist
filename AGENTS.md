@@ -45,7 +45,7 @@ Wishlist is a web app for an annual adopt-a-family gift drive.
 ## Routes
 
 - `GET` routes render HTML pages. Mutations are JSON endpoints that page scripts call with `fetch`, following the login page's pattern.
-- `http.CrossOriginProtection` in `NewServer` guards against CSRF by rejecting cross-origin `POST`, `PUT`, and `DELETE` requests from browsers. There are no CSRF tokens.
+- `http.CrossOriginProtection` in `NewServer` guards against CSRF by rejecting cross-origin `POST`, `PUT`, and `DELETE` requests from browsers. There are no CSRF tokens. See [Browser support](#browser-support) for what this assumes.
   - Never change state in a `GET` handler, since the protection skips safe methods.
 - Public routes (givers, no login):
   - `GET /`: unclaimed families, each shown as "Family N" with its member labels.
@@ -146,6 +146,17 @@ Wishlist is a web app for an annual adopt-a-family gift drive.
 - The Content Security Policy only allows scripts that carry the per-request nonce. Every `<script>` tag needs `nonce="{{ .CspNonce }}"`.
 - Do not use `alert()` or `confirm()`.
 - Do not embed Go template conditionals inside JavaScript. Instead, render a data attribute or hidden input in HTML and read it from JS.
+
+## Browser support
+
+- The app assumes a modern evergreen browser for both admins and givers. Page scripts are ES modules (`<script type="module">`) that use `fetch`, so older browsers cannot submit any form.
+- CSRF protection depends on browser-sent headers:
+  - `http.CrossOriginProtection` reads `Sec-Fetch-Site`, which browsers have sent since roughly Chrome 76, Firefox 90, and Safari 16.4.
+  - Without `Sec-Fetch-Site`, it compares the `Origin` header to `Host`.
+  - A browser that sends neither header gets no CSRF protection. The middleware lets the request through rather than rejecting it.
+- Admin sessions also rely on the `SameSite=Lax` session cookie, which keeps browsers from attaching the cookie to cross-site `POST` requests.
+- Givers have no session, so a forged claim request does no more harm than an attacker submitting the claim form directly.
+- The `Origin` fallback requires the reverse proxy to forward the browser's `Host` header unchanged. Fly's proxy does. Recheck this if the deployment adds a proxy or custom domain that rewrites `Host`.
 
 # Go
 
