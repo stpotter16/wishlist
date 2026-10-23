@@ -4,6 +4,18 @@ Bootstrapped from [mtlynch's source](https://codeberg.org/mtlynch/go-app-starter
 
 Wishlist is a web app for an annual adopt-a-family gift drive.
 
+## Open decisions: resolve before launch
+
+> [!IMPORTANT]
+> Two product decisions are still open, and stakeholders are test-driving the app to inform them. Do not pick an answer or build either feature without the user's explicit decision. Whenever a task touches claims, giver links, or launch readiness, remind the user that these decisions are still open.
+
+1. **Claim gating.** Anyone with the URL can browse and claim unclaimed families, so one person could claim every family with fake emails.
+   - Options so far: ship ungated, require a shared access code, have admins approve claims, or rate-limit claims.
+   - Affects `POST /families/{id}/claim`, the public listing, and possibly the claim form.
+2. **Emailing giver links.** The app shows a giver's private link only on screen after claiming. A giver who loses it must ask an admin to issue a new one.
+   - Open questions: which email provider, whether to send the link automatically on claim, and whether admins' "Issue new link" also sends it.
+   - The database stores only token hashes, so any re-send must issue a new token, which invalidates the old link.
+
 ## Roles
 
 - Admins run the drive.
@@ -37,9 +49,9 @@ Wishlist is a web app for an annual adopt-a-family gift drive.
 - Claimed families disappear from the public family listing.
 - Only admins can release a claim. Givers cannot unclaim a family.
 - Browsing and claiming unclaimed families requires no login or access code.
-  - Open decision: nothing stops one person from claiming every family with fake emails. Gating (a shared code, admin approval, etc.) is deferred, but must be decided before launch.
+  - Whether to gate claiming is an [open decision](#open-decisions-resolve-before-launch).
 - Givers return to their claimed family through a private link that carries a random token.
-  - Open decision: the app only shows the link on screen after claiming, so a giver who loses it can't recover it. Emailing the link (provider, automatic vs. admin-triggered sends) still needs to be decided before launch.
+  - Whether to email the link is an [open decision](#open-decisions-resolve-before-launch).
   - The database stores only the SHA-256 hash of each token (`internal/auth/token.go`).
   - Never log a token. The request logger redacts paths under `/claims/`.
   - Pages under `/claims/` send `Cache-Control: no-store` and `Referrer-Policy: no-referrer`.
