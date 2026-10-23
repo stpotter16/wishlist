@@ -15,6 +15,10 @@ server/deploy:
 	./dev-scripts/deploy.sh
 
 
+admin/build:
+	./dev-scripts/build-admin.sh
+
+
 css:
 	./dev-scripts/build-css.sh
 

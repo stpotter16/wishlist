@@ -8,6 +8,7 @@ import (
 )
 
 var ErrAdminNotFound = errors.New("admin not found")
+var ErrAdminExists = errors.New("admin already exists")
 
 type Store interface {
 	// Admins

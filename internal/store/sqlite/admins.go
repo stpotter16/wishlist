@@ -6,6 +6,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/mattn/go-sqlite3"
 	"github.com/stpotter16/wishlist/internal/store"
 	"github.com/stpotter16/wishlist/internal/types"
 )
@@ -47,5 +48,9 @@ func (s Store) CreateAdmin(ctx context.Context, username, passwordHash string) e
 		`INSERT INTO admin (username, password_hash, created_time, last_modified_time) VALUES (?, ?, ?, ?)`,
 		username, passwordHash, now, now,
 	)
+	var sqliteErr sqlite3.Error
+	if errors.As(err, &sqliteErr) && sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
+		return store.ErrAdminExists
+	}
 	return err
 }

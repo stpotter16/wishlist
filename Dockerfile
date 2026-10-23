@@ -22,6 +22,7 @@ RUN if [[ -n "${TZ}" ]]; then \
     fi
 
 COPY --from=builder /app/release/wishlist /app/wishlist
+COPY --from=builder /app/release/wishlist-admin /app/wishlist-admin
 COPY --from=litestream /usr/local/bin/litestream /app/litestream
 COPY ./docker-entrypoint /app/docker-entrypoint
 COPY ./litestream.yml /etc/litestream.yml

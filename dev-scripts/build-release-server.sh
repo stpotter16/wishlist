@@ -14,3 +14,9 @@ go build \
     -tags sqlite_omit_load_extension \
     -o ./release/wishlist \
     cmd/server/main.go
+
+go build \
+    -ldflags "-s -w -linkmode external -extldflags '-static'" \
+    -tags sqlite_omit_load_extension \
+    -o ./release/wishlist-admin \
+    cmd/admin/main.go

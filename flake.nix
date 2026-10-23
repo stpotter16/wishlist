@@ -55,7 +55,7 @@
           vendorHash = "";
 
           # Build configuration matching Makefile
-          subPackages = ["cmd/server"];
+          subPackages = ["cmd/server" "cmd/admin"];
 
           ldflags = [
             "-s" # Strip symbol table

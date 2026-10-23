@@ -68,6 +68,7 @@ Wishlist is a web app for an annual adopt-a-family gift drive.
 ## Layout
 
 - `cmd/server/main.go`: entrypoint; reads configuration from environment variables.
+- `cmd/admin/main.go`: CLI that seeds admin accounts (see [Seeding admins](#seeding-admins)).
 - `internal/handlers/`: routes (`routes.go`), HTTP handlers, middleware, sessions, templates, and embedded static files.
 - `internal/store/`: the `Store` interface and its SQLite implementation.
   - Migrations live in `internal/store/sqlite/migrations/` as numbered `.sql` files.
@@ -101,7 +102,15 @@ Wishlist is a web app for an annual adopt-a-family gift drive.
 - `make lint/sql`: run sqlfluff with the SQLite dialect.
 - `make lint/frontend`: run `prettier --check` over the repo, including Go HTML templates.
 - `make secrets/hmac` / `make secrets/gcm`: generate random keys.
+- `make admin/build`: build the admin CLI to `./tmp/admin`.
 - `make server/deploy`: run `fly deploy`. Do not deploy unless the user explicitly asks.
+
+## Seeding admins
+
+- `admin create <username>` reads the password from the first line of stdin and needs `WISHLIST_DB_PATH`. It runs migrations, so it works on a fresh database.
+  - Locally: `make admin/build`, then `./tmp/admin create <username>`.
+  - In production, the Docker image ships the CLI as `/app/wishlist-admin`. Run `fly ssh console`, then `/app/wishlist-admin create <username>`.
+- The password prompt echoes what you type. Pipe the password in (e.g. `read -rs pw && printf '%s\n' "$pw" | ./tmp/admin create <username>`) to keep it off screen.
 
 # Frontend
 
