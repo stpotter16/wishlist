@@ -16,6 +16,15 @@ Wishlist is a web app for an annual adopt-a-family gift drive.
    - Open questions: which email provider, whether to send the link automatically on claim, and whether admins' "Issue new link" also sends it.
    - The database stores only token hashes, so any re-send must issue a new token, which invalidates the old link.
 
+## Must do before launch
+
+The current Fly deployment is a stakeholder test drive. It runs without Litestream, so the database resets on every deploy. These items must ship before the app goes to production:
+
+1. **Favicon.** `layouts/base.html` links `/static/assets/favicon.svg`, but the file doesn't exist, so every page load 404s on it. Browsers also request `/favicon.ico` on their own.
+2. **Bot defense on `POST /families/{id}/claim`.** It's a public, unauthenticated form that takes contact details, so bots can spam it or claim families.
+   - Overlaps with the [claim gating decision](#open-decisions-resolve-before-launch). Settle the approach with the user before building, since options like a CAPTCHA would also need Content Security Policy changes.
+3. **Turn Litestream back on.** Create a bucket and set the `LITESTREAM_BUCKET`, `LITESTREAM_ENDPOINT`, `LITESTREAM_ACCESS_KEY_ID`, and `LITESTREAM_SECRET_ACCESS_KEY` secrets, so production data survives deploys and machine restarts. Without them, `docker-entrypoint` starts the app without replication.
+
 ## Roles
 
 - Admins run the drive.
@@ -125,7 +134,8 @@ Wishlist is a web app for an annual adopt-a-family gift drive.
 - `make lint/frontend`: run `prettier --check` over the repo, including Go HTML templates.
 - `make secrets/hmac` / `make secrets/gcm`: generate random keys.
 - `make admin/build`: build the admin CLI to `./tmp/admin`.
-- `make server/deploy`: run `fly deploy`. Do not deploy unless the user explicitly asks.
+- `make server/deploy`: run `fly deploy --ha=false`. Do not deploy unless the user explicitly asks.
+  - `--ha=false` keeps the app on exactly one machine. Each Fly machine has its own SQLite file, so a second machine would split families, claims, and sessions between two databases. Never remove it, with or without Litestream.
 
 ## Seeding admins
 

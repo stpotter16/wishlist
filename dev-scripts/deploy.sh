@@ -6,4 +6,5 @@ set -e
 # Fail on unset variable
 set -u
 
-fly deploy
+# Each Fly machine has its own SQLite file, so run exactly one.
+fly deploy --ha=false
