@@ -21,12 +21,16 @@ func addRoutes(
 	// Views
 	mux.HandleFunc("GET /{$}", familiesGet(store))
 	mux.HandleFunc("GET /families/{id}", familyGet(store))
+	mux.HandleFunc("GET /claims/{token}", claimGet(store))
 	mux.HandleFunc("GET /login", loginGet())
 
 	// Views that need authentication
 	viewAuthRequired := middleware.NewViewAuthenticationRequiredMiddleware(sessionManager)
 	mux.Handle("GET /admin", viewAuthRequired(adminGet(store)))
 	mux.Handle("GET /admin/families/new", viewAuthRequired(adminNewFamilyGet()))
+
+	// Public API endpoints
+	mux.HandleFunc("POST /families/{id}/claim", familyClaimPost(store))
 
 	// Auth
 	mux.HandleFunc("POST /login", loginPost(authenticator, sessionManager))

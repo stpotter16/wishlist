@@ -55,6 +55,24 @@ func (s Store) ListUnclaimedFamilies(ctx context.Context) ([]types.FamilySummary
 // It returns store.ErrFamilyNotFound if the family doesn't exist, is claimed,
 // or has no members, matching what ListUnclaimedFamilies shows.
 func (s Store) GetUnclaimedFamily(ctx context.Context, id int) (types.Family, error) {
+	var isClaimed int
+	if err := s.db.QueryRow(ctx,
+		`SELECT EXISTS (SELECT 1 FROM claim WHERE family_id = ?)`,
+		id,
+	).Scan(&isClaimed); err != nil {
+		return types.Family{}, err
+	}
+	if isClaimed != 0 {
+		return types.Family{}, store.ErrFamilyNotFound
+	}
+
+	return s.loadFamily(ctx, id)
+}
+
+// loadFamily returns a family with its members and their wishlists, whether
+// or not it is claimed. It returns store.ErrFamilyNotFound if the family
+// doesn't exist or has no members.
+func (s Store) loadFamily(ctx context.Context, id int) (types.Family, error) {
 	rows, err := s.db.Query(ctx, `
 	SELECT
 		family_member.id,
@@ -73,9 +91,6 @@ func (s Store) GetUnclaimedFamily(ctx context.Context, id int) (types.Family, er
 		family_member
 	WHERE
 		family_member.family_id = ?
-		AND NOT EXISTS (
-			SELECT 1 FROM claim WHERE claim.family_id = family_member.family_id
-		)
 	ORDER BY
 		family_member.id
 	`, id)

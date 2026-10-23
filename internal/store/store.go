@@ -10,6 +10,9 @@ import (
 var ErrAdminNotFound = errors.New("admin not found")
 var ErrAdminExists = errors.New("admin already exists")
 var ErrFamilyNotFound = errors.New("family not found")
+var ErrFamilyAlreadyClaimed = errors.New("family is already claimed")
+var ErrEmailAlreadyClaimed = errors.New("email has already claimed a family")
+var ErrClaimNotFound = errors.New("claim not found")
 
 type Store interface {
 	// Admins
@@ -21,4 +24,8 @@ type Store interface {
 	ListFamilies(ctx context.Context) ([]types.FamilySummary, error)
 	ListUnclaimedFamilies(ctx context.Context) ([]types.FamilySummary, error)
 	GetUnclaimedFamily(ctx context.Context, id int) (types.Family, error)
+
+	// Claims
+	CreateClaim(ctx context.Context, claim types.NewClaim) error
+	GetClaimedFamily(ctx context.Context, accessTokenHash string) (types.Family, error)
 }

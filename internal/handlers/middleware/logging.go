@@ -3,8 +3,13 @@ package middleware
 import (
 	"log"
 	"net/http"
+	"strings"
 	"time"
 )
+
+// claimPathPrefix starts every giver's private link. The rest of the path is
+// the giver's access token, which must stay out of the logs.
+const claimPathPrefix = "/claims/"
 
 type statusRecorder struct {
 	http.ResponseWriter
@@ -24,6 +29,13 @@ func LoggingWrapper(next http.Handler) http.Handler {
 			statusCode:     200,
 		}
 		next.ServeHTTP(recorder, r)
-		log.Printf("%s %s %s %d %s", r.Method, r.Host, r.URL.Path, recorder.statusCode, time.Since(start))
+		log.Printf("%s %s %s %d %s", r.Method, r.Host, redactPath(r.URL.Path), recorder.statusCode, time.Since(start))
 	})
+}
+
+func redactPath(path string) string {
+	if strings.HasPrefix(path, claimPathPrefix) {
+		return claimPathPrefix + "[redacted]"
+	}
+	return path
 }

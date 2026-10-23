@@ -1,0 +1,61 @@
+{{ define "title" }}Your family{{ end }}
+{{ define "script-tags" }}
+  <script type="module" nonce="{{ .CspNonce }}">
+    const link = document.getElementById("private-link");
+    const copyButton = document.getElementById("copy-link");
+    const copyStatus = document.getElementById("copy-status");
+
+    link.value = window.location.href;
+
+    copyButton.addEventListener("click", () => {
+      navigator.clipboard
+        .writeText(link.value)
+        .then(() => {
+          copyStatus.textContent = "Copied";
+        })
+        .catch(() => {
+          link.select();
+          copyStatus.textContent = "Select the link and copy it";
+        });
+    });
+  </script>
+{{ end }}
+{{ define "content" }}
+  <main class="max-w-lg mx-auto px-4 pt-8 pb-16">
+    <h1 class="text-2xl font-bold">You adopted Family {{ .Family.ID }}</h1>
+    <p class="mt-1 text-muted">Thank you! Here's what each member needs.</p>
+
+    <section class="mt-6 rounded-xl border border-accent p-5">
+      <h2 class="font-semibold">Save this page</h2>
+      <p class="mt-1 text-sm text-muted">
+        This private link is the only way back to your family's wishlists.
+        Bookmark it or copy it somewhere safe, and don't share it.
+      </p>
+      <div class="mt-3 flex gap-2">
+        <input
+          id="private-link"
+          type="text"
+          readonly
+          aria-label="Your private link"
+          class="min-w-0 flex-1 rounded-lg border border-border bg-page px-3 py-2 text-sm"
+        />
+        <button
+          id="copy-link"
+          type="button"
+          class="rounded-lg border border-border px-4 py-2 text-sm font-semibold hover:bg-surface"
+        >
+          Copy
+        </button>
+      </div>
+      <p
+        id="copy-status"
+        class="mt-2 text-sm text-muted"
+        aria-live="polite"
+      ></p>
+    </section>
+
+    <div class="mt-6 flex flex-col gap-4">
+      {{ template "family-members" .Family.Members }}
+    </div>
+  </main>
+{{ end }}

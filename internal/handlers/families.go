@@ -55,6 +55,7 @@ func familyGet(s store.Store) http.HandlerFunc {
 			ParseFS(
 				templateFS,
 				"templates/layouts/base.html",
+				"templates/partials/family-members.html",
 				"templates/pages/family.html",
 			))
 	return func(w http.ResponseWriter, r *http.Request) {

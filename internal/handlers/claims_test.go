@@ -1,0 +1,195 @@
+package handlers_test
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+)
+
+func TestClaimFamilyGivesGiverPrivateLink(t *testing.T) {
+	server, d := newTestServer(t)
+
+	if _, err := d.Exec(context.Background(), `
+	INSERT INTO family (id, created_time, last_modified_time) VALUES
+		(1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+	INSERT INTO family_member
+		(id, family_id, label, created_time, last_modified_time)
+	VALUES
+		(10, 1, 'Mom', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+	INSERT INTO wishlist_item (
+		family_member_id, kind, name, created_time, last_modified_time
+	) VALUES
+		(10, 'need', 'Winter coat', '2026-01-01T00:00:00Z',
+			'2026-01-01T00:00:00Z');
+	`); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/families/1/claim", strings.NewReader(
+		`{"name": "Giver", "email": "giver@example.com", "phone": "555-0100"}`))
+	rec := httptest.NewRecorder()
+	server.ServeHTTP(rec, req)
+
+	if got, want := rec.Code, http.StatusCreated; got != want {
+		t.Fatalf("claim status=%d, want=%d, body=%q", got, want, rec.Body.String())
+	}
+	var claim struct {
+		URL string `json:"url"`
+	}
+	if err := json.NewDecoder(rec.Body).Decode(&claim); err != nil {
+		t.Fatalf("decode claim response: %v", err)
+	}
+	if !strings.HasPrefix(claim.URL, "/claims/") {
+		t.Fatalf("url=%q, want prefix /claims/", claim.URL)
+	}
+
+	// The private link shows the family.
+	req = httptest.NewRequest(http.MethodGet, claim.URL, nil)
+	rec = httptest.NewRecorder()
+	server.ServeHTTP(rec, req)
+
+	if got, want := rec.Code, http.StatusOK; got != want {
+		t.Fatalf("private link status=%d, want=%d", got, want)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, "You adopted Family 1") {
+		t.Errorf("private link is missing family heading")
+	}
+	if !strings.Contains(body, "Winter coat") {
+		t.Errorf("private link is missing need")
+	}
+	if got, want := rec.Header().Get("Cache-Control"), "no-store"; got != want {
+		t.Errorf("Cache-Control=%q, want=%q", got, want)
+	}
+	if got, want := rec.Header().Get("Referrer-Policy"), "no-referrer"; got != want {
+		t.Errorf("Referrer-Policy=%q, want=%q", got, want)
+	}
+
+	// The family leaves the public listing and its public page.
+	req = httptest.NewRequest(http.MethodGet, "/", nil)
+	rec = httptest.NewRecorder()
+	server.ServeHTTP(rec, req)
+	if strings.Contains(rec.Body.String(), "Family 1") {
+		t.Errorf("public listing still shows claimed family")
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/families/1", nil)
+	rec = httptest.NewRecorder()
+	server.ServeHTTP(rec, req)
+	if got, want := rec.Code, http.StatusNotFound; got != want {
+		t.Errorf("public family page status=%d, want=%d", got, want)
+	}
+}
+
+func TestClaimFamilyRejectsInvalidClaims(t *testing.T) {
+	for _, tt := range []struct {
+		explanation string
+		path        string
+		body        string
+		statusWant  int
+	}{
+		{
+			"body that isn't JSON is rejected",
+			"/families/1/claim",
+			`not json`,
+			http.StatusBadRequest,
+		},
+		{
+			"claim without a name is rejected",
+			"/families/1/claim",
+			`{"name": "  ", "email": "new@example.com", "phone": "555-0199"}`,
+			http.StatusBadRequest,
+		},
+		{
+			"claim without a phone is rejected",
+			"/families/1/claim",
+			`{"name": "New", "email": "new@example.com", "phone": ""}`,
+			http.StatusBadRequest,
+		},
+		{
+			"claim with a malformed email is rejected",
+			"/families/1/claim",
+			`{"name": "New", "email": "not-an-email", "phone": "555-0199"}`,
+			http.StatusBadRequest,
+		},
+		{
+			"claim with a display-name email is rejected",
+			"/families/1/claim",
+			`{"name": "New", "email": "New <new@example.com>", "phone": "555-0199"}`,
+			http.StatusBadRequest,
+		},
+		{
+			"claim on a family that doesn't exist is not found",
+			"/families/99/claim",
+			`{"name": "New", "email": "new@example.com", "phone": "555-0199"}`,
+			http.StatusNotFound,
+		},
+		{
+			"claim on a non-numeric family ID is not found",
+			"/families/abc/claim",
+			`{"name": "New", "email": "new@example.com", "phone": "555-0199"}`,
+			http.StatusNotFound,
+		},
+		{
+			"claim on an already claimed family conflicts",
+			"/families/2/claim",
+			`{"name": "New", "email": "new@example.com", "phone": "555-0199"}`,
+			http.StatusConflict,
+		},
+		{
+			"claim with an email that already claimed a family conflicts",
+			"/families/1/claim",
+			`{"name": "New", "email": "giver@example.com", "phone": "555-0199"}`,
+			http.StatusConflict,
+		},
+	} {
+		t.Run(fmt.Sprintf("%s [%s]", tt.explanation, tt.path), func(t *testing.T) {
+			server, d := newTestServer(t)
+
+			// Family 1 is unclaimed. giver@example.com claimed family 2.
+			if _, err := d.Exec(context.Background(), `
+			INSERT INTO family (id, created_time, last_modified_time) VALUES
+				(1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+				(2, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+			INSERT INTO family_member
+				(family_id, label, created_time, last_modified_time)
+			VALUES
+				(1, 'Mom', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+				(2, 'Dad', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+			INSERT INTO claim (
+				family_id, giver_name, giver_email, giver_phone,
+				access_token_hash, created_time
+			) VALUES (
+				2, 'Giver', 'giver@example.com', '555-0100', 'existing-hash',
+				'2026-01-01T00:00:00Z'
+			);
+			`); err != nil {
+				t.Fatalf("seed: %v", err)
+			}
+
+			req := httptest.NewRequest(http.MethodPost, tt.path, strings.NewReader(tt.body))
+			rec := httptest.NewRecorder()
+			server.ServeHTTP(rec, req)
+
+			if got, want := rec.Code, tt.statusWant; got != want {
+				t.Errorf("status=%d, want=%d, body=%q", got, want, rec.Body.String())
+			}
+		})
+	}
+}
+
+func TestClaimPageUnknownTokenIsNotFound(t *testing.T) {
+	server, _ := newTestServer(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/claims/not-a-real-token", nil)
+	rec := httptest.NewRecorder()
+	server.ServeHTTP(rec, req)
+
+	if got, want := rec.Code, http.StatusNotFound; got != want {
+		t.Errorf("status=%d, want=%d", got, want)
+	}
+}

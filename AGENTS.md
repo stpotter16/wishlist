@@ -36,6 +36,9 @@ Wishlist is a web app for an annual adopt-a-family gift drive.
 - Browsing and claiming unclaimed families requires no login or access code.
   - Open decision: nothing stops one person from claiming every family with fake emails. Gating (a shared code, admin approval, etc.) is deferred, but must be decided before launch.
 - Givers return to their claimed family through a private link that carries a random token. The app may email this link to the giver.
+  - The database stores only the SHA-256 hash of each token (`internal/auth/token.go`).
+  - Never log a token. The request logger redacts paths under `/claims/`.
+  - Pages under `/claims/` send `Cache-Control: no-store` and `Referrer-Policy: no-referrer`.
 
 ## Lifecycle
 
