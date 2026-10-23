@@ -7,9 +7,6 @@ import (
 	"net/http"
 
 	"github.com/stpotter16/wishlist/internal/handlers/middleware"
-	"github.com/stpotter16/wishlist/internal/handlers/sessions"
-	"github.com/stpotter16/wishlist/internal/store"
-	"github.com/stpotter16/wishlist/internal/types"
 )
 
 type viewProps struct {
@@ -66,7 +63,7 @@ func loginGet() http.HandlerFunc {
 	}
 }
 
-func indexGet(s store.Store, sessionManager sessions.SessionManger) http.HandlerFunc {
+func indexGet() http.HandlerFunc {
 	t := template.Must(
 		template.New("base.html").
 			ParseFS(
@@ -83,22 +80,7 @@ func indexGet(s store.Store, sessionManager sessions.SessionManger) http.Handler
 			return
 		}
 
-		clicks, err := s.GetClicks(r.Context())
-		if err != nil {
-			log.Printf("indexGet: failed to load clicks: %v", err)
-			renderAppError(w, r, http.StatusInternalServerError)
-			return
-		}
-
-		props := struct {
-			viewProps
-			HasClicks bool
-			Clicks    []types.Click
-		}{
-			viewProps: viewProps{CspNonce: nonce, ActivePage: "dashboard"},
-			HasClicks: len(clicks) > 0,
-			Clicks:    clicks,
-		}
+		props := viewProps{CspNonce: nonce, ActivePage: "dashboard"}
 
 		if err := t.Execute(w, props); err != nil {
 			log.Printf("Could not create index page: %v", err)

@@ -17,7 +17,7 @@ func loginPost(authenticator authentication.Authenticator, sessionManager sessio
 			return
 		}
 
-		userId, err := authenticator.AuthenticateUser(r.Context(), req)
+		userId, err := authenticator.AuthenticateAdmin(r.Context(), req)
 		if err != nil {
 			if errors.Is(err, authentication.ErrInvalidCredentials) {
 				http.Error(w, "Invalid credentials", http.StatusUnauthorized)

@@ -2,11 +2,10 @@ package types
 
 import "time"
 
-type User struct {
+type Admin struct {
 	ID               int
 	Username         string
-	Password         string
-	IsAdmin          bool
+	PasswordHash     string
 	CreatedTime      time.Time
 	LastModifiedTime time.Time
 }

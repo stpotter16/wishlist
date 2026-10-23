@@ -2,12 +2,48 @@ Bootstrapped from [mtlynch's source](https://codeberg.org/mtlynch/go-app-starter
 
 # Project overview
 
-Wishlist is a web app for gift exchanges.
+Wishlist is a web app for an annual adopt-a-family gift drive.
 
-- Each participant keeps a wishlist of items they want.
-- Givers claim items so other givers don't buy the same thing.
-  - The recipient must never see which of their items are claimed or by whom.
-- Stack: Go `net/http` server, Go `html/template` views styled with Tailwind, SQLite (with Litestream replication in production), deployed to Fly.io.
+## Roles
+
+- Admins run the drive.
+  - Admins log in with a username and password, seeded from the CLI. There is no signup flow.
+  - All admins have the same permissions.
+- Givers adopt a family and buy gifts for its members.
+  - Givers have no accounts.
+- Recipients are the families. They never use the app.
+
+## Domain
+
+- Admins collect wishlists from recipients offline and enter them into the app.
+- A family groups the recipients in one household (e.g. a mom and her kids).
+  - The app shows a family only by an anonymous label such as "Family 12".
+- Each family member has their own wishlist.
+  - The app shows a member by an anonymous label such as "Mom" or "Child, 7", plus age and gender.
+  - Admins transcribe each member's paper intake sheet. The sheet has free-text "Need" and "Wish" sections, plus clothing sizes (shirt, pant, shoe), preferred brands or colors, preferred toiletry scents, an unscented-products checkbox for sensitive skin, preferred gift cards, and additional info (sports teams, fandoms, hobbies).
+  - Each line of the "Need" and "Wish" sections becomes its own wishlist item, tagged `need` or `wish`.
+- Recipient data stays anonymous. Never store names, addresses, phone numbers, or other identifying information for recipients.
+  - Revisit this only after getting feedback from real admins.
+
+## Claims
+
+- A giver claims an entire family, not individual items or members.
+- Claims are one-to-one: each family has at most one giver, and each giver claims one family.
+- Claiming a family requires the giver's name, email, and phone.
+  - Only admins can read giver contact details.
+- Claimed families disappear from the public family listing.
+- Only admins can release a claim. Givers cannot unclaim a family.
+- Browsing unclaimed families requires no login or access code.
+- Givers return to their claimed family through a private link that carries a random token. The app may email this link to the giver.
+
+## Lifecycle
+
+- The drive runs once a year. Each season starts by wiping the database, so the schema has no concept of seasons or campaigns.
+- Tracking gift drop-off or delivery is out of scope for now.
+
+## Stack
+
+- Go `net/http` server, Go `html/template` views styled with Tailwind, SQLite (with Litestream replication in production), deployed to Fly.io.
 
 ## Starter scaffolding
 

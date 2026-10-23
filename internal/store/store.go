@@ -7,14 +7,10 @@ import (
 	"github.com/stpotter16/wishlist/internal/types"
 )
 
-var ErrUserNotFound = errors.New("user not found")
+var ErrAdminNotFound = errors.New("admin not found")
 
 type Store interface {
-	// Users
-	GetUserByUsername(ctx context.Context, username string) (types.User, error)
-	CreateUser(ctx context.Context, username, passwordHash string, isAdmin bool) error
-
-	// Clicks
-	GetClicks(ctx context.Context) ([]types.Click, error)
-	CreateClick(ctx context.Context) (int, error)
+	// Admins
+	GetAdminByUsername(ctx context.Context, username string) (types.Admin, error)
+	CreateAdmin(ctx context.Context, username, passwordHash string) error
 }
