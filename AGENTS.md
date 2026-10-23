@@ -15,6 +15,20 @@ Wishlist is a web app for an annual adopt-a-family gift drive.
 2. **Emailing giver links.** The app shows a giver's private link only on screen after claiming. A giver who loses it must ask an admin to issue a new one.
    - Open questions: which email provider, whether to send the link automatically on claim, and whether admins' "Issue new link" also sends it.
    - The database stores only token hashes, so any re-send must issue a new token, which invalidates the old link.
+   - Solution space (explored 2026-10-23, nothing chosen):
+     - **When to send.** Choose one:
+       - Send on claim and still show the link on screen. Simplest, and gives givers a copy they can find later, but adds no abuse protection.
+       - Send on claim and show the link only in the email. A claimer must control a real mailbox to see the family, which deters fake-email claims. Disposable mailboxes still get through, and a giver whose email bounces or lands in spam is stuck until an admin re-issues the link.
+       - Hold the claim as pending until the giver clicks an emailed confirmation link, then release it automatically if no one confirms within a set window. This is the strongest email-based gate, but it needs a pending claim state, an expiry job or lazy expiry check, and a schema migration. It overlaps with [claim gating](#open-decisions-resolve-before-launch) and [bot defense](#must-do-before-launch).
+     - **Admin re-send.** "Issue new link" could email the new link directly, show it for the admin to copy, or both. Emailing it directly keeps the token off the admin's screen and clipboard.
+     - **Provider.** Volume is tiny (one email per claim, at most a few hundred per season), so any free tier works. Candidates: Postmark (strong deliverability, transactional only), Resend (simple HTTP API), AWS SES (cheapest, more setup), or plain SMTP through an existing mailbox. An HTTP API needs no new Go dependency, since `net/http` can call it.
+     - **Deliverability.** Sending from a custom domain needs SPF and DKIM records. The app currently runs on a `fly.dev` hostname, so a custom domain is likely a prerequisite.
+     - **Absolute URLs.** Both claim endpoints return a relative `/claims/<token>` path. An email needs an absolute URL, so the server would need a configured base URL (for example a new required env var). Do not build it from the request's `Host` header.
+     - **Implementation constraints.**
+       - Define a small mailer interface in `internal/handlers` and pass a fake in tests, so tests never send real email.
+       - Never log the email body or the link, since both carry the token. A dev mailer that prints emails to stdout would break this rule.
+       - Send after `CreateClaim` commits. If sending fails, decide whether the claim stands (and an admin re-sends) or rolls back.
+       - The provider API key becomes another Fly secret.
 
 ## Must do before launch
 
@@ -23,7 +37,19 @@ The current Fly deployment is a stakeholder test drive. It runs without Litestre
 1. **Favicon.** `layouts/base.html` links `/static/assets/favicon.svg`, but the file doesn't exist, so every page load 404s on it. Browsers also request `/favicon.ico` on their own.
 2. **Bot defense on `POST /families/{id}/claim`.** It's a public, unauthenticated form that takes contact details, so bots can spam it or claim families.
    - Overlaps with the [claim gating decision](#open-decisions-resolve-before-launch). Settle the approach with the user before building, since options like a CAPTCHA would also need Content Security Policy changes.
+   - Solution space (explored 2026-10-23, nothing chosen). The options stack, so a combination is likely:
+     - **Baseline that already exists.** The claim form posts JSON through `fetch`, so generic form-spam bots that submit HTML forms never reach the handler. `ErrEmailAlreadyClaimed` limits each email to one family, but fake emails defeat it. Admins can release bogus claims from the admin page.
+     - **Honeypot field and minimum fill time.** Add a hidden field that humans leave empty, plus a render timestamp, and reject submissions that fill the honeypot or arrive too fast. This needs no dependency, no CSP change, and no friction for givers, but stops only unsophisticated bots.
+     - **Per-IP rate limiting.** Limit claims per client IP, for example a few per hour. Read the IP from Fly's `Fly-Client-IP` header, not `RemoteAddr`, which is Fly's proxy. An in-memory limiter is fine because the app runs on exactly one machine (`--ha=false`). Hand-roll it, or add `golang.org/x/time/rate`. It slows bulk claiming from one host but not from many IPs.
+     - **Cloudflare Turnstile (or hCaptcha).** Turnstile is free, usually invisible, and avoids Google tracking, unlike reCAPTCHA.
+       - It needs a client widget, a server-side verification call to Cloudflare with a secret key, and a new Fly secret.
+       - CSP: `script-src` must add `https://challenges.cloudflare.com`. The policy has no `default-src` or `frame-src`, so its iframe already loads. Adding either directive later would require allowing the same origin.
+       - It adds a third-party dependency on the public claim path, and tests need a way to skip verification (for example, an empty secret skips it).
+     - **Shared access code.** Admins share a code through the drive's own channels, and the claim form requires it. This blocks bots and strangers entirely, but a leaked code drops the protection, and it adds a step for givers. This option is the same as a [claim gating](#open-decisions-resolve-before-launch) option.
+     - **Admin approval or email confirmation.** Claims start as pending until an admin approves or the giver confirms by email. Either is the strongest protection, but needs a pending claim state and a migration. See [emailing giver links](#open-decisions-resolve-before-launch).
+     - **Admin alerting.** Email admins on each claim, or flag bursts, so they can release bogus claims quickly. This depends on an email provider.
 3. **Turn Litestream back on.** Create a bucket and set the `LITESTREAM_BUCKET`, `LITESTREAM_ENDPOINT`, `LITESTREAM_ACCESS_KEY_ID`, and `LITESTREAM_SECRET_ACCESS_KEY` secrets, so production data survives deploys and machine restarts. Without them, `docker-entrypoint` starts the app without replication.
+4. **Fix the missing `return` in `CspMiddleware`.** When `generateNonce` fails, `internal/handlers/middleware/csp.go` writes a 500 but keeps going: it sets a CSP header with an empty nonce and calls the next handler, which then writes a second response on top of the error. Return right after `http.Error`. While there, fix the "generationg" typo in the error message.
 
 ## Roles
 
