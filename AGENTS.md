@@ -61,10 +61,10 @@ Wishlist is a web app for an annual adopt-a-family gift drive.
   - `GET /admin`: every family with its claim status.
   - `GET /admin/families/new`: one form for transcribing a family's intake sheets, with a section per member.
   - `POST /admin/families`: creates a family with all its members and wishlist items in one transaction. Responds with the new family's ID.
-  - `GET /admin/families/{id}`: shows a family's members, its claim status, and the giver's contact details if claimed. It hosts the release and new-link actions. Editing members and items here is planned.
-  - `DELETE /admin/families/{id}`.
-  - `POST /admin/families/{id}/members`, `PUT /admin/members/{id}`, `DELETE /admin/members/{id}`.
-  - `POST /admin/members/{id}/items`, `PUT /admin/items/{id}`, `DELETE /admin/items/{id}`.
+  - `GET /admin/families/{id}`: shows a family's members, its claim status, and the giver's contact details if claimed. It hosts the edit link and the release, new-link, and delete actions.
+  - `GET /admin/families/{id}/edit`: the new-family form, prefilled with the family's members and wishlists.
+  - `PUT /admin/families/{id}`: replaces a family's members and wishlist items in one transaction, with the same body as `POST /admin/families`. Members and items get new IDs. A claim on the family is kept.
+  - `DELETE /admin/families/{id}`: deletes an unclaimed family. Returns 409 while the family is claimed, so admins must release the claim first.
   - `DELETE /admin/families/{id}/claim`: releases a claim.
   - `POST /admin/families/{id}/claim/token`: replaces the giver's link token and returns the new link, so admins can re-send it.
 

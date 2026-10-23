@@ -21,6 +21,8 @@ type Store interface {
 
 	// Families
 	CreateFamily(ctx context.Context, family types.Family) (int, error)
+	UpdateFamily(ctx context.Context, id int, family types.Family) error
+	DeleteFamily(ctx context.Context, id int) error
 	ListFamilies(ctx context.Context) ([]types.FamilySummary, error)
 	ListUnclaimedFamilies(ctx context.Context) ([]types.FamilySummary, error)
 	GetUnclaimedFamily(ctx context.Context, id int) (types.Family, error)

@@ -1,0 +1,172 @@
+{{ define "title" }}{{ .Heading }}{{ end }}
+{{ define "script-tags" }}
+  <script type="module" nonce="{{ .CspNonce }}">
+    const form = document.getElementById("family-form");
+    const members = document.getElementById("members");
+    const memberTemplate = document.getElementById("member-template");
+
+    function renumberMembers() {
+      const sections = members.querySelectorAll("[data-member]");
+      sections.forEach((section, i) => {
+        section.querySelector("[data-member-heading]").textContent =
+          `Member ${i + 1}`;
+        section.querySelector("[data-action='remove']").hidden =
+          sections.length === 1;
+      });
+    }
+
+    function wireRemoveButton(section) {
+      section
+        .querySelector("[data-action='remove']")
+        .addEventListener("click", () => {
+          section.remove();
+          renumberMembers();
+        });
+    }
+
+    function addMember() {
+      const section = memberTemplate.content.firstElementChild.cloneNode(true);
+      wireRemoveButton(section);
+      members.appendChild(section);
+      renumberMembers();
+      return section;
+    }
+
+    function fieldValue(section, name) {
+      return section.querySelector(`[data-field='${name}']`).value;
+    }
+
+    function readMember(section) {
+      const age = fieldValue(section, "age");
+      return {
+        label: fieldValue(section, "label"),
+        age: age === "" ? null : Number(age),
+        gender: fieldValue(section, "gender"),
+        shirtSize: fieldValue(section, "shirtSize"),
+        pantSize: fieldValue(section, "pantSize"),
+        shoeSize: fieldValue(section, "shoeSize"),
+        preferredBrandsColors: fieldValue(section, "preferredBrandsColors"),
+        preferredScents: fieldValue(section, "preferredScents"),
+        prefersUnscented: section.querySelector(
+          "[data-field='prefersUnscented']",
+        ).checked,
+        preferredGiftCards: fieldValue(section, "preferredGiftCards"),
+        additionalInfo: fieldValue(section, "additionalInfo"),
+        needs: fieldValue(section, "needs").split("\n"),
+        wishes: fieldValue(section, "wishes").split("\n"),
+      };
+    }
+
+    function setFormState(isEnabled) {
+      form.querySelectorAll("input, textarea, button").forEach((el) => {
+        el.disabled = !isEnabled;
+      });
+    }
+
+    async function saveFamily(family) {
+      return fetch(form.dataset.submitUrl, {
+        method: form.dataset.submitMethod,
+        mode: "same-origin",
+        credentials: "include",
+        cache: "no-cache",
+        redirect: "error",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(family),
+      }).then((response) => {
+        if (!response.ok) {
+          return response.text().then((error) => Promise.reject(error));
+        }
+        return response.json();
+      });
+    }
+
+    document.getElementById("add-member").addEventListener("click", () => {
+      addMember().querySelector("[data-field='label']").focus();
+    });
+
+    document.getElementById("error-close").addEventListener("click", () => {
+      document.getElementById("error-message").classList.add("hidden");
+    });
+
+    form.addEventListener("submit", (evt) => {
+      evt.preventDefault();
+      const family = {
+        members: Array.from(members.querySelectorAll("[data-member]")).map(
+          readMember,
+        ),
+      };
+      setFormState(false);
+      saveFamily(family)
+        .then((saved) => {
+          document.location = `/admin/families/${saved.id}`;
+        })
+        .catch((error) => {
+          setFormState(true);
+          document.getElementById("error-text").textContent = error;
+          document.getElementById("error-message").classList.remove("hidden");
+          window.scrollTo({ top: 0 });
+        });
+    });
+
+    members.querySelectorAll("[data-member]").forEach(wireRemoveButton);
+    if (members.children.length === 0) {
+      addMember();
+    }
+    renumberMembers();
+  </script>
+{{ end }}
+{{ define "page-content" }}
+  <a href="{{ .BackURL }}" class="text-sm text-accent hover:text-accent-hover"
+    >&larr; Back</a
+  >
+  <h1 class="mt-2 text-2xl font-bold">{{ .Heading }}</h1>
+  <p class="mt-1 text-muted">
+    Add one member per intake sheet. Put each need or wish on its own line.
+  </p>
+
+  <div id="error-message" class="mt-4 hidden" role="alert">
+    <div
+      class="flex items-center gap-2 rounded-lg bg-danger-surface px-4 py-3 text-sm text-danger"
+    >
+      <span id="error-text"></span>
+      <button
+        id="error-close"
+        type="button"
+        aria-label="Dismiss"
+        class="ml-auto rounded-md px-2 text-lg leading-none hover:bg-danger/10"
+      >
+        &times;
+      </button>
+    </div>
+  </div>
+
+  <form
+    id="family-form"
+    data-submit-method="{{ .SubmitMethod }}"
+    data-submit-url="{{ .SubmitURL }}"
+    class="mt-6 flex flex-col gap-4"
+  >
+    <div id="members" class="flex flex-col gap-4">
+      {{ range .Family.Members }}
+        {{ template "member-fieldset" . }}
+      {{ end }}
+    </div>
+    <button
+      id="add-member"
+      type="button"
+      class="inline-flex items-center justify-center rounded-lg border border-border px-4 py-2 text-sm font-semibold hover:bg-surface disabled:opacity-50"
+    >
+      Add member
+    </button>
+    <button
+      type="submit"
+      class="inline-flex items-center justify-center rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50"
+    >
+      Save family
+    </button>
+  </form>
+
+  <template id="member-template">
+    {{ template "member-fieldset" .EmptyMember }}
+  </template>
+{{ end }}

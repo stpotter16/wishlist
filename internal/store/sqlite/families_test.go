@@ -326,3 +326,175 @@ func TestListFamilies(t *testing.T) {
 		t.Errorf("families=%+v, want=%+v", got, want)
 	}
 }
+
+func TestUpdateFamilyReplacesMembersAndKeepsClaim(t *testing.T) {
+	s, d := newTestStore(t)
+	ctx := context.Background()
+
+	// Family 1 has two members and a claim.
+	if _, err := d.Exec(ctx, `
+	INSERT INTO family (id, created_time, last_modified_time) VALUES
+		(1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+	INSERT INTO family_member
+		(id, family_id, label, created_time, last_modified_time)
+	VALUES
+		(10, 1, 'Mom', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+		(11, 1, 'Child, 7', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+	INSERT INTO wishlist_item (
+		family_member_id, kind, name, created_time, last_modified_time
+	) VALUES
+		(10, 'need', 'Old coat', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+	INSERT INTO claim (
+		family_id, giver_name, giver_email, giver_phone, access_token_hash,
+		created_time
+	) VALUES (
+		1, 'Giver', 'giver@example.com', '555-0100', 'token-hash',
+		'2026-01-01T00:00:00Z'
+	);
+	`); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	if err := s.UpdateFamily(ctx, 1, types.Family{
+		Members: []types.FamilyMember{
+			{
+				Label:  "Mom",
+				Needs:  []types.WishlistItem{{Name: "Winter coat"}},
+				Wishes: []types.WishlistItem{{Name: "Book"}},
+			},
+		},
+	}); err != nil {
+		t.Fatalf("UpdateFamily: %v", err)
+	}
+
+	// Members and items get new IDs, so compare only what the caller supplied.
+	family, err := s.GetClaimedFamily(ctx, "token-hash")
+	if err != nil {
+		t.Fatalf("GetClaimedFamily: %v", err)
+	}
+	if got, want := len(family.Members), 1; got != want {
+		t.Fatalf("len(Members)=%d, want=%d", got, want)
+	}
+	if got, want := family.Members[0].Label, "Mom"; got != want {
+		t.Errorf("Label=%q, want=%q", got, want)
+	}
+	if got, want := len(family.Members[0].Needs), 1; got != want {
+		t.Fatalf("len(Needs)=%d, want=%d", got, want)
+	}
+	if got, want := family.Members[0].Needs[0].Name, "Winter coat"; got != want {
+		t.Errorf("Needs[0].Name=%q, want=%q", got, want)
+	}
+	if got, want := len(family.Members[0].Wishes), 1; got != want {
+		t.Fatalf("len(Wishes)=%d, want=%d", got, want)
+	}
+	if got, want := family.Members[0].Wishes[0].Name, "Book"; got != want {
+		t.Errorf("Wishes[0].Name=%q, want=%q", got, want)
+	}
+
+	var itemCount int
+	if err := d.QueryRow(ctx, `SELECT COUNT(*) FROM wishlist_item`).Scan(&itemCount); err != nil {
+		t.Fatalf("count items: %v", err)
+	}
+	if got, want := itemCount, 2; got != want {
+		t.Errorf("wishlist items=%d, want=%d", got, want)
+	}
+}
+
+func TestUpdateFamilyNotFound(t *testing.T) {
+	s, _ := newTestStore(t)
+
+	err := s.UpdateFamily(context.Background(), 99, types.Family{
+		Members: []types.FamilyMember{{Label: "Mom"}},
+	})
+	if got, want := err, store.ErrFamilyNotFound; got != want {
+		t.Errorf("err=%v, want=%v", got, want)
+	}
+}
+
+func TestDeleteFamily(t *testing.T) {
+	for _, tt := range []struct {
+		explanation    string
+		familyID       int
+		errExpected    error
+		isGoneExpected bool
+	}{
+		{
+			"unclaimed family is deleted",
+			1,
+			nil,
+			true,
+		},
+		{
+			"claimed family is kept",
+			2,
+			store.ErrFamilyAlreadyClaimed,
+			false,
+		},
+		{
+			"family that doesn't exist is not found",
+			99,
+			store.ErrFamilyNotFound,
+			true,
+		},
+	} {
+		t.Run(fmt.Sprintf("%s [%d]", tt.explanation, tt.familyID), func(t *testing.T) {
+			s, d := newTestStore(t)
+			ctx := context.Background()
+
+			// Family 1 is unclaimed. Family 2 is claimed.
+			if _, err := d.Exec(ctx, `
+			INSERT INTO family (id, created_time, last_modified_time) VALUES
+				(1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+				(2, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+			INSERT INTO family_member
+				(id, family_id, label, created_time, last_modified_time)
+			VALUES
+				(10, 1, 'Mom', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+				(20, 2, 'Dad', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+			INSERT INTO claim (
+				family_id, giver_name, giver_email, giver_phone,
+				access_token_hash, created_time
+			) VALUES (
+				2, 'Giver', 'giver@example.com', '555-0100', 'token-hash',
+				'2026-01-01T00:00:00Z'
+			);
+			`); err != nil {
+				t.Fatalf("seed: %v", err)
+			}
+
+			err := s.DeleteFamily(ctx, tt.familyID)
+			if got, want := err, tt.errExpected; got != want {
+				t.Fatalf("err=%v, want=%v", got, want)
+			}
+
+			_, err = s.GetFamily(ctx, tt.familyID)
+			if got, want := err == store.ErrFamilyNotFound, tt.isGoneExpected; got != want {
+				t.Errorf("family gone=%v, want=%v (GetFamily err=%v)", got, want, err)
+			}
+		})
+	}
+}
+
+func TestDeletedFamilyIDIsNeverReused(t *testing.T) {
+	s, _ := newTestStore(t)
+	ctx := context.Background()
+
+	// The family ID is the public "Family N" label, so a new family must
+	// never take over a deleted family's label.
+	newFamily := types.Family{Members: []types.FamilyMember{{Label: "Mom"}}}
+	deletedID, err := s.CreateFamily(ctx, newFamily)
+	if err != nil {
+		t.Fatalf("CreateFamily: %v", err)
+	}
+	if err := s.DeleteFamily(ctx, deletedID); err != nil {
+		t.Fatalf("DeleteFamily: %v", err)
+	}
+
+	nextID, err := s.CreateFamily(ctx, newFamily)
+	if err != nil {
+		t.Fatalf("CreateFamily: %v", err)
+	}
+	if nextID == deletedID {
+		t.Errorf("new family reused deleted family ID %d", deletedID)
+	}
+}

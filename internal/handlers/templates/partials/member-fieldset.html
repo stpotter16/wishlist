@@ -1,0 +1,154 @@
+{{ define "member-fieldset" }}
+  <fieldset
+    data-member
+    class="flex flex-col gap-4 rounded-xl bg-surface p-5 shadow-sm"
+  >
+    <div class="flex items-center justify-between gap-4">
+      <h2 data-member-heading class="text-lg font-semibold"></h2>
+      <button
+        data-action="remove"
+        type="button"
+        class="rounded-md px-2 py-1 text-sm text-danger hover:bg-danger-surface disabled:opacity-50"
+      >
+        Remove
+      </button>
+    </div>
+    <label class="block">
+      <span class="mb-1 block text-sm font-semibold">Label</span>
+      <input
+        data-field="label"
+        value="{{ .Label }}"
+        type="text"
+        required
+        placeholder="e.g. Mom, Child, 7"
+        class="w-full rounded-lg border border-border bg-page px-3 py-2 text-sm focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50"
+      />
+    </label>
+    <div class="grid grid-cols-2 gap-4">
+      <label class="block">
+        <span class="mb-1 block text-sm font-semibold">Age</span>
+        <input
+          data-field="age"
+          value="{{ with .Age }}{{ . }}{{ end }}"
+          type="number"
+          min="0"
+          max="130"
+          class="w-full rounded-lg border border-border bg-page px-3 py-2 text-sm focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50"
+        />
+      </label>
+      <label class="block">
+        <span class="mb-1 block text-sm font-semibold">Gender</span>
+        <input
+          data-field="gender"
+          value="{{ .Gender }}"
+          type="text"
+          class="w-full rounded-lg border border-border bg-page px-3 py-2 text-sm focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50"
+        />
+      </label>
+    </div>
+    <label class="block">
+      <span class="mb-1 block text-sm font-semibold">Needs</span>
+      <textarea
+        data-field="needs"
+        rows="4"
+        class="w-full rounded-lg border border-border bg-page px-3 py-2 text-sm focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50"
+      >
+{{ itemNames .Needs }}</textarea
+      >
+    </label>
+    <div class="grid grid-cols-3 gap-4">
+      <label class="block">
+        <span class="mb-1 block text-sm font-semibold">Shirt size</span>
+        <input
+          data-field="shirtSize"
+          value="{{ .ShirtSize }}"
+          type="text"
+          class="w-full rounded-lg border border-border bg-page px-3 py-2 text-sm focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50"
+        />
+      </label>
+      <label class="block">
+        <span class="mb-1 block text-sm font-semibold">Pant size</span>
+        <input
+          data-field="pantSize"
+          value="{{ .PantSize }}"
+          type="text"
+          class="w-full rounded-lg border border-border bg-page px-3 py-2 text-sm focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50"
+        />
+      </label>
+      <label class="block">
+        <span class="mb-1 block text-sm font-semibold">Shoe size</span>
+        <input
+          data-field="shoeSize"
+          value="{{ .ShoeSize }}"
+          type="text"
+          class="w-full rounded-lg border border-border bg-page px-3 py-2 text-sm focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50"
+        />
+      </label>
+    </div>
+    <label class="block">
+      <span class="mb-1 block text-sm font-semibold"
+        >Preferred brands or colors</span
+      >
+      <input
+        data-field="preferredBrandsColors"
+        value="{{ .PreferredBrandsColors }}"
+        type="text"
+        class="w-full rounded-lg border border-border bg-page px-3 py-2 text-sm focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50"
+      />
+    </label>
+    <label class="block">
+      <span class="mb-1 block text-sm font-semibold"
+        >Preferred scents for toiletries</span
+      >
+      <input
+        data-field="preferredScents"
+        value="{{ .PreferredScents }}"
+        type="text"
+        class="w-full rounded-lg border border-border bg-page px-3 py-2 text-sm focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50"
+      />
+    </label>
+    <label class="flex items-center gap-2">
+      <input
+        data-field="prefersUnscented"
+        {{ if .PrefersUnscented }}checked{{ end }}
+        type="checkbox"
+        class="size-4 accent-accent disabled:opacity-50"
+      />
+      <span class="text-sm"
+        >Sensitive skin &mdash; prefers unscented products</span
+      >
+    </label>
+    <label class="block">
+      <span class="mb-1 block text-sm font-semibold">Wishes</span>
+      <textarea
+        data-field="wishes"
+        rows="4"
+        class="w-full rounded-lg border border-border bg-page px-3 py-2 text-sm focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50"
+      >
+{{ itemNames .Wishes }}</textarea
+      >
+    </label>
+    <label class="block">
+      <span class="mb-1 block text-sm font-semibold">Preferred gift cards</span>
+      <input
+        data-field="preferredGiftCards"
+        value="{{ .PreferredGiftCards }}"
+        type="text"
+        class="w-full rounded-lg border border-border bg-page px-3 py-2 text-sm focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50"
+      />
+    </label>
+    <label class="block">
+      <span class="mb-1 block text-sm font-semibold"
+        >Additional information</span
+      >
+      <textarea
+        data-field="additionalInfo"
+        rows="3"
+        placeholder="Favorite sports team, fandoms, hobbies"
+        class="w-full rounded-lg border border-border bg-page px-3 py-2 text-sm focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50"
+      >
+{{ .AdditionalInfo }}</textarea
+      >
+    </label>
+  </fieldset>
+{{ end }}

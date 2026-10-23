@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/stpotter16/wishlist/internal/auth"
 	"github.com/stpotter16/wishlist/internal/parse"
@@ -53,15 +54,43 @@ func adminGet(s store.Store) http.HandlerFunc {
 	}
 }
 
-func adminNewFamilyGet() http.HandlerFunc {
-	t := template.Must(
+// familyFormProps configures the shared new and edit family form.
+type familyFormProps struct {
+	viewProps
+	Heading      string
+	BackURL      string
+	SubmitMethod string
+	SubmitURL    string
+	Family       types.Family
+	// EmptyMember renders the blank section that "Add member" clones.
+	EmptyMember types.FamilyMember
+}
+
+func parseFamilyFormTemplate() *template.Template {
+	return template.Must(
 		template.New("base.html").
+			Funcs(template.FuncMap{
+				// itemNames puts one item per line, the format the form's
+				// needs and wishes textareas use.
+				"itemNames": func(items []types.WishlistItem) string {
+					names := make([]string, 0, len(items))
+					for _, item := range items {
+						names = append(names, item.Name)
+					}
+					return strings.Join(names, "\n")
+				},
+			}).
 			ParseFS(
 				templateFS,
 				"templates/layouts/base.html",
 				"templates/layouts/app.html",
-				"templates/pages/new-family.html",
+				"templates/partials/member-fieldset.html",
+				"templates/pages/family-form.html",
 			))
+}
+
+func adminNewFamilyGet() http.HandlerFunc {
+	t := parseFamilyFormTemplate()
 	return func(w http.ResponseWriter, r *http.Request) {
 		nonce, err := extractCspNonceOnly(r)
 		if err != nil {
@@ -70,10 +99,60 @@ func adminNewFamilyGet() http.HandlerFunc {
 			return
 		}
 
-		props := viewProps{CspNonce: nonce, ActivePage: "dashboard"}
+		props := familyFormProps{
+			viewProps:    viewProps{CspNonce: nonce, ActivePage: "dashboard"},
+			Heading:      "New family",
+			BackURL:      "/admin",
+			SubmitMethod: http.MethodPost,
+			SubmitURL:    "/admin/families",
+		}
 
 		if err := t.Execute(w, props); err != nil {
 			log.Printf("Could not create new family page: %v", err)
+			renderAppError(w, r, http.StatusInternalServerError)
+		}
+	}
+}
+
+func adminEditFamilyGet(s store.Store) http.HandlerFunc {
+	t := parseFamilyFormTemplate()
+	return func(w http.ResponseWriter, r *http.Request) {
+		nonce, err := extractCspNonceOnly(r)
+		if err != nil {
+			log.Printf("Could not extract csp nonce from ctx: %v", err)
+			renderAppError(w, r, http.StatusInternalServerError)
+			return
+		}
+
+		id, err := strconv.Atoi(r.PathValue("id"))
+		if err != nil {
+			renderAppError(w, r, http.StatusNotFound)
+			return
+		}
+
+		family, err := s.GetFamily(r.Context(), id)
+		if errors.Is(err, store.ErrFamilyNotFound) {
+			renderAppError(w, r, http.StatusNotFound)
+			return
+		}
+		if err != nil {
+			log.Printf("adminEditFamilyGet: failed to get family %d: %v", id, err)
+			renderAppError(w, r, http.StatusInternalServerError)
+			return
+		}
+
+		familyURL := "/admin/families/" + strconv.Itoa(id)
+		props := familyFormProps{
+			viewProps:    viewProps{CspNonce: nonce, ActivePage: "dashboard"},
+			Heading:      "Edit Family " + strconv.Itoa(id),
+			BackURL:      familyURL,
+			SubmitMethod: http.MethodPut,
+			SubmitURL:    familyURL,
+			Family:       family,
+		}
+
+		if err := t.Execute(w, props); err != nil {
+			log.Printf("Could not create edit family page: %v", err)
 			renderAppError(w, r, http.StatusInternalServerError)
 		}
 	}
@@ -224,5 +303,65 @@ func adminClaimTokenPost(s store.Store) http.HandlerFunc {
 		}{URL: "/claims/" + token}); err != nil {
 			log.Printf("adminClaimTokenPost: failed to write response: %v", err)
 		}
+	}
+}
+
+func adminFamilyPut(s store.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.Atoi(r.PathValue("id"))
+		if err != nil {
+			http.Error(w, "This family doesn't exist.", http.StatusNotFound)
+			return
+		}
+
+		family, err := parse.ParseFamilyPost(w, r)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		err = s.UpdateFamily(r.Context(), id, family)
+		if errors.Is(err, store.ErrFamilyNotFound) {
+			http.Error(w, "This family doesn't exist.", http.StatusNotFound)
+			return
+		}
+		if err != nil {
+			log.Printf("adminFamilyPut: failed to update family %d: %v", id, err)
+			http.Error(w, "Server issue - try again later", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(struct {
+			ID int `json:"id"`
+		}{ID: id}); err != nil {
+			log.Printf("adminFamilyPut: failed to write response: %v", err)
+		}
+	}
+}
+
+func adminFamilyDelete(s store.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.Atoi(r.PathValue("id"))
+		if err != nil {
+			http.Error(w, "This family doesn't exist.", http.StatusNotFound)
+			return
+		}
+
+		err = s.DeleteFamily(r.Context(), id)
+		switch {
+		case errors.Is(err, store.ErrFamilyNotFound):
+			http.Error(w, "This family doesn't exist.", http.StatusNotFound)
+			return
+		case errors.Is(err, store.ErrFamilyAlreadyClaimed):
+			http.Error(w, "Release this family's claim before deleting it.", http.StatusConflict)
+			return
+		case err != nil:
+			log.Printf("adminFamilyDelete: failed to delete family %d: %v", id, err)
+			http.Error(w, "Server issue - try again later", http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusNoContent)
 	}
 }

@@ -13,8 +13,10 @@ CREATE TABLE session (
 ) STRICT;
 
 -- The app labels each family as "Family <id>" to keep recipients anonymous.
+-- AUTOINCREMENT keeps SQLite from reusing a deleted family's ID, which would
+-- hand its public label and URL to a different family.
 CREATE TABLE family (
-    id INTEGER PRIMARY KEY,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     created_time TEXT NOT NULL,
     last_modified_time TEXT NOT NULL
 ) STRICT;

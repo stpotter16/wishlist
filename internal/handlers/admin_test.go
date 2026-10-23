@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -73,8 +74,12 @@ func TestAdminNewFamilyPageRenders(t *testing.T) {
 	if got, want := rec.Code, http.StatusOK; got != want {
 		t.Fatalf("status=%d, want=%d", got, want)
 	}
-	if got, want := rec.Body.String(), `id="new-family"`; !strings.Contains(got, want) {
-		t.Errorf("body is missing %q", want)
+	body := rec.Body.String()
+	if !strings.Contains(body, `data-submit-method="POST"`) {
+		t.Errorf("form doesn't submit with POST")
+	}
+	if !strings.Contains(body, `data-submit-url="/admin/families"`) {
+		t.Errorf("form doesn't submit to the create endpoint")
 	}
 }
 
@@ -257,8 +262,11 @@ func TestAdminFamilyPageShowsGiverOfClaimedFamily(t *testing.T) {
 	if !strings.Contains(body, "555-0100") {
 		t.Errorf("body is missing giver phone")
 	}
+	if !strings.Contains(body, `datetime="2026-11-05T14:30:00Z"`) {
+		t.Errorf("body is missing machine-readable claim time")
+	}
 	if !strings.Contains(body, "Nov 5, 2026") {
-		t.Errorf("body is missing claim date")
+		t.Errorf("body is missing fallback claim date")
 	}
 	if !strings.Contains(body, "Mom") {
 		t.Errorf("body is missing member label")
@@ -449,6 +457,246 @@ func TestAdminClaimActions(t *testing.T) {
 
 			if got, want := rec.Code, tt.statusWant; got != want {
 				t.Errorf("status=%d, want=%d", got, want)
+			}
+		})
+	}
+}
+
+func TestAdminEditFamilyPageIsPrefilled(t *testing.T) {
+	server, d := newTestServer(t)
+	cookie := loginAsAdmin(t, server, d)
+
+	if _, err := d.Exec(context.Background(), `
+	INSERT INTO family (id, created_time, last_modified_time) VALUES
+		(1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+	INSERT INTO family_member (
+		id, family_id, label, age, shirt_size, prefers_unscented,
+		created_time, last_modified_time
+	) VALUES (
+		10, 1, 'Child, 7', 7, 'Youth M', 1,
+		'2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'
+	);
+	INSERT INTO wishlist_item (
+		family_member_id, kind, name, created_time, last_modified_time
+	) VALUES
+		(10, 'need', 'Winter coat', '2026-01-01T00:00:00Z',
+			'2026-01-01T00:00:00Z'),
+		(10, 'need', 'Rain boots', '2026-01-01T00:00:00Z',
+			'2026-01-01T00:00:00Z');
+	`); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/admin/families/1/edit", nil)
+	req.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	server.ServeHTTP(rec, req)
+
+	if got, want := rec.Code, http.StatusOK; got != want {
+		t.Fatalf("status=%d, want=%d", got, want)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, `data-submit-method="PUT"`) {
+		t.Errorf("form doesn't submit with PUT")
+	}
+	if !strings.Contains(body, `data-submit-url="/admin/families/1"`) {
+		t.Errorf("form doesn't submit to the family")
+	}
+	if !strings.Contains(body, `value="Child, 7"`) {
+		t.Errorf("form is missing member label")
+	}
+	if !strings.Contains(body, `value="7"`) {
+		t.Errorf("form is missing member age")
+	}
+	if !strings.Contains(body, `value="Youth M"`) {
+		t.Errorf("form is missing shirt size")
+	}
+	if !strings.Contains(body, "Winter coat\nRain boots</textarea") {
+		t.Errorf("form is missing needs, one per line")
+	}
+	if !regexp.MustCompile(`data-field="prefersUnscented"\s+checked`).MatchString(body) {
+		t.Errorf("form doesn't check the unscented checkbox")
+	}
+}
+
+func TestAdminUpdateFamilyKeepsClaim(t *testing.T) {
+	server, d := newTestServer(t)
+	cookie := loginAsAdmin(t, server, d)
+	seedClaimedAndUnclaimedFamilies(t, d)
+
+	req := httptest.NewRequest(http.MethodPut, "/admin/families/1", strings.NewReader(
+		`{"members": [{"label": "Mom", "needs": ["Winter coat"]}]}`))
+	req.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	server.ServeHTTP(rec, req)
+
+	if got, want := rec.Code, http.StatusOK; got != want {
+		t.Fatalf("status=%d, want=%d, body=%q", got, want, rec.Body.String())
+	}
+	if got, want := strings.TrimSpace(rec.Body.String()), `{"id":1}`; got != want {
+		t.Errorf("body=%s, want=%s", got, want)
+	}
+
+	// The giver's existing link still works and shows the edit.
+	req = httptest.NewRequest(http.MethodGet, "/claims/old-token", nil)
+	rec = httptest.NewRecorder()
+	server.ServeHTTP(rec, req)
+	if got, want := rec.Code, http.StatusOK; got != want {
+		t.Fatalf("private link status=%d, want=%d", got, want)
+	}
+	if got, want := rec.Body.String(), "Winter coat"; !strings.Contains(got, want) {
+		t.Errorf("private link is missing edited need %q", want)
+	}
+}
+
+func TestAdminDeleteUnclaimedFamily(t *testing.T) {
+	server, d := newTestServer(t)
+	cookie := loginAsAdmin(t, server, d)
+	seedClaimedAndUnclaimedFamilies(t, d)
+
+	req := httptest.NewRequest(http.MethodDelete, "/admin/families/2", nil)
+	req.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	server.ServeHTTP(rec, req)
+
+	if got, want := rec.Code, http.StatusNoContent; got != want {
+		t.Fatalf("status=%d, want=%d", got, want)
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/admin/families/2", nil)
+	req.AddCookie(cookie)
+	rec = httptest.NewRecorder()
+	server.ServeHTTP(rec, req)
+	if got, want := rec.Code, http.StatusNotFound; got != want {
+		t.Errorf("admin page status=%d, want=%d", got, want)
+	}
+}
+
+func TestAdminFamilyPageDeleteControls(t *testing.T) {
+	for _, tt := range []struct {
+		explanation      string
+		path             string
+		isDeleteExpected bool
+	}{
+		{
+			"claimed family asks to release before deleting",
+			"/admin/families/1",
+			false,
+		},
+		{
+			"unclaimed family offers delete",
+			"/admin/families/2",
+			true,
+		},
+	} {
+		t.Run(fmt.Sprintf("%s [%s]", tt.explanation, tt.path), func(t *testing.T) {
+			server, d := newTestServer(t)
+			cookie := loginAsAdmin(t, server, d)
+			seedClaimedAndUnclaimedFamilies(t, d)
+
+			req := httptest.NewRequest(http.MethodGet, tt.path, nil)
+			req.AddCookie(cookie)
+			rec := httptest.NewRecorder()
+			server.ServeHTTP(rec, req)
+
+			body := rec.Body.String()
+			if got, want := strings.Contains(body, `id="delete"`), tt.isDeleteExpected; got != want {
+				t.Errorf("offers delete=%v, want=%v", got, want)
+			}
+			if got, want := strings.Contains(body, tt.path+"/edit"), true; got != want {
+				t.Errorf("links to edit page=%v, want=%v", got, want)
+			}
+		})
+	}
+}
+
+func TestAdminFamilyEditAndDeleteErrors(t *testing.T) {
+	for _, tt := range []struct {
+		explanation string
+		method      string
+		path        string
+		body        string
+		isLoggedIn  bool
+		statusWant  int
+	}{
+		{
+			"edit page requires login",
+			http.MethodGet,
+			"/admin/families/2/edit",
+			"",
+			false,
+			http.StatusTemporaryRedirect,
+		},
+		{
+			"updating requires login",
+			http.MethodPut,
+			"/admin/families/2",
+			`{"members": [{"label": "Mom"}]}`,
+			false,
+			http.StatusUnauthorized,
+		},
+		{
+			"deleting requires login",
+			http.MethodDelete,
+			"/admin/families/2",
+			"",
+			false,
+			http.StatusUnauthorized,
+		},
+		{
+			"edit page for a family that doesn't exist is not found",
+			http.MethodGet,
+			"/admin/families/99/edit",
+			"",
+			true,
+			http.StatusNotFound,
+		},
+		{
+			"updating a family that doesn't exist is not found",
+			http.MethodPut,
+			"/admin/families/99",
+			`{"members": [{"label": "Mom"}]}`,
+			true,
+			http.StatusNotFound,
+		},
+		{
+			"updating with no members is rejected",
+			http.MethodPut,
+			"/admin/families/2",
+			`{"members": []}`,
+			true,
+			http.StatusBadRequest,
+		},
+		{
+			"deleting a family that doesn't exist is not found",
+			http.MethodDelete,
+			"/admin/families/99",
+			"",
+			true,
+			http.StatusNotFound,
+		},
+		{
+			"deleting a claimed family conflicts",
+			http.MethodDelete,
+			"/admin/families/1",
+			"",
+			true,
+			http.StatusConflict,
+		},
+	} {
+		t.Run(fmt.Sprintf("%s [%s %s]", tt.explanation, tt.method, tt.path), func(t *testing.T) {
+			server, d := newTestServer(t)
+			seedClaimedAndUnclaimedFamilies(t, d)
+
+			req := httptest.NewRequest(tt.method, tt.path, strings.NewReader(tt.body))
+			if tt.isLoggedIn {
+				req.AddCookie(loginAsAdmin(t, server, d))
+			}
+			rec := httptest.NewRecorder()
+			server.ServeHTTP(rec, req)
+
+			if got, want := rec.Code, tt.statusWant; got != want {
+				t.Errorf("status=%d, want=%d, body=%q", got, want, rec.Body.String())
 			}
 		})
 	}

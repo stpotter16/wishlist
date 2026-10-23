@@ -220,71 +220,130 @@ func (s Store) CreateFamily(ctx context.Context, family types.Family) (int, erro
 			return err
 		}
 
-		for _, m := range family.Members {
-			var age sql.NullInt64
-			if m.Age != nil {
-				age = sql.NullInt64{Int64: int64(*m.Age), Valid: true}
-			}
-			prefersUnscented := 0
-			if m.PrefersUnscented {
-				prefersUnscented = 1
-			}
-
-			result, err := tx.ExecContext(ctx, `
-			INSERT INTO family_member (
-				family_id,
-				label,
-				age,
-				gender,
-				shirt_size,
-				pant_size,
-				shoe_size,
-				preferred_brands_colors,
-				preferred_scents,
-				prefers_unscented,
-				preferred_gift_cards,
-				additional_info,
-				created_time,
-				last_modified_time
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-				familyID,
-				m.Label,
-				age,
-				m.Gender,
-				m.ShirtSize,
-				m.PantSize,
-				m.ShoeSize,
-				m.PreferredBrandsColors,
-				m.PreferredScents,
-				prefersUnscented,
-				m.PreferredGiftCards,
-				m.AdditionalInfo,
-				now,
-				now,
-			)
-			if err != nil {
-				return err
-			}
-			memberID, err := result.LastInsertId()
-			if err != nil {
-				return err
-			}
-
-			if err := insertWishlistItems(ctx, tx, memberID, "need", m.Needs, now); err != nil {
-				return err
-			}
-			if err := insertWishlistItems(ctx, tx, memberID, "wish", m.Wishes, now); err != nil {
-				return err
-			}
-		}
-
-		return nil
+		return insertMembers(ctx, tx, familyID, family.Members, now)
 	})
 	if err != nil {
 		return 0, err
 	}
 
 	return int(familyID), nil
+}
+
+// UpdateFamily replaces a family's members and their wishlist items in one
+// transaction. Members and items get new IDs. A claim on the family is kept.
+// It returns store.ErrFamilyNotFound if the family doesn't exist.
+func (s Store) UpdateFamily(ctx context.Context, id int, family types.Family) error {
+	now := formatTime(time.Now().UTC())
+
+	return s.db.WithTx(ctx, func(tx *sql.Tx) error {
+		result, err := tx.ExecContext(ctx,
+			`UPDATE family SET last_modified_time = ? WHERE id = ?`,
+			now, id,
+		)
+		if err != nil {
+			return err
+		}
+		if err := requireOneRow(result, store.ErrFamilyNotFound); err != nil {
+			return err
+		}
+
+		// Deleting members cascades to their wishlist items.
+		if _, err := tx.ExecContext(ctx,
+			`DELETE FROM family_member WHERE family_id = ?`,
+			id,
+		); err != nil {
+			return err
+		}
+
+		return insertMembers(ctx, tx, int64(id), family.Members, now)
+	})
+}
+
+// DeleteFamily deletes an unclaimed family with its members and their
+// wishlist items. It returns store.ErrFamilyNotFound if the family doesn't
+// exist and store.ErrFamilyAlreadyClaimed if a giver has claimed it.
+func (s Store) DeleteFamily(ctx context.Context, id int) error {
+	return s.db.WithTx(ctx, func(tx *sql.Tx) error {
+		var isClaimed int
+		if err := tx.QueryRowContext(ctx,
+			`SELECT EXISTS (SELECT 1 FROM claim WHERE family_id = ?)`,
+			id,
+		).Scan(&isClaimed); err != nil {
+			return err
+		}
+		if isClaimed != 0 {
+			return store.ErrFamilyAlreadyClaimed
+		}
+
+		// Deleting the family cascades to its members and their wishlist items.
+		result, err := tx.ExecContext(ctx, `DELETE FROM family WHERE id = ?`, id)
+		if err != nil {
+			return err
+		}
+		return requireOneRow(result, store.ErrFamilyNotFound)
+	})
+}
+
+// insertMembers inserts members and their wishlist items into a family.
+func insertMembers(ctx context.Context, tx *sql.Tx, familyID int64, members []types.FamilyMember, now string) error {
+	for _, m := range members {
+		var age sql.NullInt64
+		if m.Age != nil {
+			age = sql.NullInt64{Int64: int64(*m.Age), Valid: true}
+		}
+		prefersUnscented := 0
+		if m.PrefersUnscented {
+			prefersUnscented = 1
+		}
+
+		result, err := tx.ExecContext(ctx, `
+		INSERT INTO family_member (
+			family_id,
+			label,
+			age,
+			gender,
+			shirt_size,
+			pant_size,
+			shoe_size,
+			preferred_brands_colors,
+			preferred_scents,
+			prefers_unscented,
+			preferred_gift_cards,
+			additional_info,
+			created_time,
+			last_modified_time
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			familyID,
+			m.Label,
+			age,
+			m.Gender,
+			m.ShirtSize,
+			m.PantSize,
+			m.ShoeSize,
+			m.PreferredBrandsColors,
+			m.PreferredScents,
+			prefersUnscented,
+			m.PreferredGiftCards,
+			m.AdditionalInfo,
+			now,
+			now,
+		)
+		if err != nil {
+			return err
+		}
+		memberID, err := result.LastInsertId()
+		if err != nil {
+			return err
+		}
+
+		if err := insertWishlistItems(ctx, tx, memberID, "need", m.Needs, now); err != nil {
+			return err
+		}
+		if err := insertWishlistItems(ctx, tx, memberID, "wish", m.Wishes, now); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func insertWishlistItems(ctx context.Context, tx *sql.Tx, memberID int64, kind string, items []types.WishlistItem, now string) error {
