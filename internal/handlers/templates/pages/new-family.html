@@ -1,0 +1,292 @@
+{{ define "title" }}New family{{ end }}
+{{ define "script-tags" }}
+  <script type="module" nonce="{{ .CspNonce }}">
+    const form = document.getElementById("new-family");
+    const members = document.getElementById("members");
+    const memberTemplate = document.getElementById("member-template");
+
+    function renumberMembers() {
+      const sections = members.querySelectorAll("[data-member]");
+      sections.forEach((section, i) => {
+        section.querySelector("[data-member-heading]").textContent =
+          `Member ${i + 1}`;
+        section.querySelector("[data-action='remove']").hidden =
+          sections.length === 1;
+      });
+    }
+
+    function addMember() {
+      const section = memberTemplate.content.firstElementChild.cloneNode(true);
+      section
+        .querySelector("[data-action='remove']")
+        .addEventListener("click", () => {
+          section.remove();
+          renumberMembers();
+        });
+      members.appendChild(section);
+      renumberMembers();
+      return section;
+    }
+
+    function fieldValue(section, name) {
+      return section.querySelector(`[data-field='${name}']`).value;
+    }
+
+    function readMember(section) {
+      const age = fieldValue(section, "age");
+      return {
+        label: fieldValue(section, "label"),
+        age: age === "" ? null : Number(age),
+        gender: fieldValue(section, "gender"),
+        shirtSize: fieldValue(section, "shirtSize"),
+        pantSize: fieldValue(section, "pantSize"),
+        shoeSize: fieldValue(section, "shoeSize"),
+        preferredBrandsColors: fieldValue(section, "preferredBrandsColors"),
+        preferredScents: fieldValue(section, "preferredScents"),
+        prefersUnscented: section.querySelector(
+          "[data-field='prefersUnscented']",
+        ).checked,
+        preferredGiftCards: fieldValue(section, "preferredGiftCards"),
+        additionalInfo: fieldValue(section, "additionalInfo"),
+        needs: fieldValue(section, "needs").split("\n"),
+        wishes: fieldValue(section, "wishes").split("\n"),
+      };
+    }
+
+    function setFormState(isEnabled) {
+      form.querySelectorAll("input, textarea, button").forEach((el) => {
+        el.disabled = !isEnabled;
+      });
+    }
+
+    async function createFamily(family) {
+      return fetch("/admin/families", {
+        method: "POST",
+        mode: "same-origin",
+        credentials: "include",
+        cache: "no-cache",
+        redirect: "error",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(family),
+      }).then((response) => {
+        if (!response.ok) {
+          return response.text().then((error) => Promise.reject(error));
+        }
+        return Promise.resolve();
+      });
+    }
+
+    document.getElementById("add-member").addEventListener("click", () => {
+      addMember().querySelector("[data-field='label']").focus();
+    });
+
+    document.getElementById("error-close").addEventListener("click", () => {
+      document.getElementById("error-message").classList.add("hidden");
+    });
+
+    form.addEventListener("submit", (evt) => {
+      evt.preventDefault();
+      const family = {
+        members: Array.from(members.querySelectorAll("[data-member]")).map(
+          readMember,
+        ),
+      };
+      setFormState(false);
+      createFamily(family)
+        .then(() => {
+          document.location = "/admin";
+        })
+        .catch((error) => {
+          setFormState(true);
+          document.getElementById("error-text").textContent = error;
+          document.getElementById("error-message").classList.remove("hidden");
+          window.scrollTo({ top: 0 });
+        });
+    });
+
+    addMember();
+  </script>
+{{ end }}
+{{ define "page-content" }}
+  <a href="/admin" class="text-sm text-accent hover:text-accent-hover"
+    >&larr; Families</a
+  >
+  <h1 class="mt-2 text-2xl font-bold">New family</h1>
+  <p class="mt-1 text-muted">
+    Add one member per intake sheet. Put each need or wish on its own line.
+  </p>
+
+  <div id="error-message" class="mt-4 hidden" role="alert">
+    <div
+      class="flex items-center gap-2 rounded-lg bg-danger-surface px-4 py-3 text-sm text-danger"
+    >
+      <span id="error-text"></span>
+      <button
+        id="error-close"
+        type="button"
+        aria-label="Dismiss"
+        class="ml-auto rounded-md px-2 text-lg leading-none hover:bg-danger/10"
+      >
+        &times;
+      </button>
+    </div>
+  </div>
+
+  <form id="new-family" class="mt-6 flex flex-col gap-4">
+    <div id="members" class="flex flex-col gap-4"></div>
+    <button
+      id="add-member"
+      type="button"
+      class="inline-flex items-center justify-center rounded-lg border border-border px-4 py-2 text-sm font-semibold hover:bg-surface disabled:opacity-50"
+    >
+      Add member
+    </button>
+    <button
+      type="submit"
+      class="inline-flex items-center justify-center rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50"
+    >
+      Save family
+    </button>
+  </form>
+
+  <template id="member-template">
+    <fieldset
+      data-member
+      class="flex flex-col gap-4 rounded-xl bg-surface p-5 shadow-sm"
+    >
+      <div class="flex items-center justify-between gap-4">
+        <h2 data-member-heading class="text-lg font-semibold"></h2>
+        <button
+          data-action="remove"
+          type="button"
+          class="rounded-md px-2 py-1 text-sm text-danger hover:bg-danger-surface disabled:opacity-50"
+        >
+          Remove
+        </button>
+      </div>
+      <label class="block">
+        <span class="mb-1 block text-sm font-semibold">Label</span>
+        <input
+          data-field="label"
+          type="text"
+          required
+          placeholder="e.g. Mom, Child, 7"
+          class="w-full rounded-lg border border-border bg-page px-3 py-2 text-sm focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50"
+        />
+      </label>
+      <div class="grid grid-cols-2 gap-4">
+        <label class="block">
+          <span class="mb-1 block text-sm font-semibold">Age</span>
+          <input
+            data-field="age"
+            type="number"
+            min="0"
+            max="130"
+            class="w-full rounded-lg border border-border bg-page px-3 py-2 text-sm focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50"
+          />
+        </label>
+        <label class="block">
+          <span class="mb-1 block text-sm font-semibold">Gender</span>
+          <input
+            data-field="gender"
+            type="text"
+            class="w-full rounded-lg border border-border bg-page px-3 py-2 text-sm focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50"
+          />
+        </label>
+      </div>
+      <label class="block">
+        <span class="mb-1 block text-sm font-semibold">Needs</span>
+        <textarea
+          data-field="needs"
+          rows="4"
+          class="w-full rounded-lg border border-border bg-page px-3 py-2 text-sm focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50"
+        ></textarea>
+      </label>
+      <div class="grid grid-cols-3 gap-4">
+        <label class="block">
+          <span class="mb-1 block text-sm font-semibold">Shirt size</span>
+          <input
+            data-field="shirtSize"
+            type="text"
+            class="w-full rounded-lg border border-border bg-page px-3 py-2 text-sm focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50"
+          />
+        </label>
+        <label class="block">
+          <span class="mb-1 block text-sm font-semibold">Pant size</span>
+          <input
+            data-field="pantSize"
+            type="text"
+            class="w-full rounded-lg border border-border bg-page px-3 py-2 text-sm focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50"
+          />
+        </label>
+        <label class="block">
+          <span class="mb-1 block text-sm font-semibold">Shoe size</span>
+          <input
+            data-field="shoeSize"
+            type="text"
+            class="w-full rounded-lg border border-border bg-page px-3 py-2 text-sm focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50"
+          />
+        </label>
+      </div>
+      <label class="block">
+        <span class="mb-1 block text-sm font-semibold"
+          >Preferred brands or colors</span
+        >
+        <input
+          data-field="preferredBrandsColors"
+          type="text"
+          class="w-full rounded-lg border border-border bg-page px-3 py-2 text-sm focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50"
+        />
+      </label>
+      <label class="block">
+        <span class="mb-1 block text-sm font-semibold"
+          >Preferred scents for toiletries</span
+        >
+        <input
+          data-field="preferredScents"
+          type="text"
+          class="w-full rounded-lg border border-border bg-page px-3 py-2 text-sm focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50"
+        />
+      </label>
+      <label class="flex items-center gap-2">
+        <input
+          data-field="prefersUnscented"
+          type="checkbox"
+          class="size-4 accent-accent disabled:opacity-50"
+        />
+        <span class="text-sm"
+          >Sensitive skin &mdash; prefers unscented products</span
+        >
+      </label>
+      <label class="block">
+        <span class="mb-1 block text-sm font-semibold">Wishes</span>
+        <textarea
+          data-field="wishes"
+          rows="4"
+          class="w-full rounded-lg border border-border bg-page px-3 py-2 text-sm focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50"
+        ></textarea>
+      </label>
+      <label class="block">
+        <span class="mb-1 block text-sm font-semibold"
+          >Preferred gift cards</span
+        >
+        <input
+          data-field="preferredGiftCards"
+          type="text"
+          class="w-full rounded-lg border border-border bg-page px-3 py-2 text-sm focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50"
+        />
+      </label>
+      <label class="block">
+        <span class="mb-1 block text-sm font-semibold"
+          >Additional information</span
+        >
+        <textarea
+          data-field="additionalInfo"
+          rows="3"
+          placeholder="Favorite sports team, fandoms, hobbies"
+          class="w-full rounded-lg border border-border bg-page px-3 py-2 text-sm focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50"
+        ></textarea>
+      </label>
+    </fieldset>
+  </template>
+{{ end }}

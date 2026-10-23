@@ -10,7 +10,6 @@ import (
 )
 
 type viewProps struct {
-	CsrfToken  string
 	CspNonce   string
 	ActivePage string
 }
@@ -58,32 +57,6 @@ func loginGet() http.HandlerFunc {
 		if err := t.Execute(w, viewProps{CspNonce: nonce}); err != nil {
 			log.Printf("Could not create login page: %v", err)
 			http.Error(w, "Server issue - try again later", http.StatusInternalServerError)
-		}
-	}
-}
-
-func adminGet() http.HandlerFunc {
-	t := template.Must(
-		template.New("base.html").
-			ParseFS(
-				templateFS,
-				"templates/layouts/base.html",
-				"templates/layouts/app.html",
-				"templates/pages/admin.html",
-			))
-	return func(w http.ResponseWriter, r *http.Request) {
-		nonce, err := extractCspNonceOnly(r)
-		if err != nil {
-			log.Printf("Could not extract csp nonce from ctx: %v", err)
-			renderAppError(w, r, http.StatusInternalServerError)
-			return
-		}
-
-		props := viewProps{CspNonce: nonce, ActivePage: "dashboard"}
-
-		if err := t.Execute(w, props); err != nil {
-			log.Printf("Could not create admin page: %v", err)
-			renderAppError(w, r, http.StatusInternalServerError)
 		}
 	}
 }

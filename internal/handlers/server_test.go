@@ -1,10 +1,14 @@
 package handlers_test
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
+	"github.com/stpotter16/wishlist/internal/auth"
 	"github.com/stpotter16/wishlist/internal/handlers"
 	"github.com/stpotter16/wishlist/internal/handlers/authentication"
 	"github.com/stpotter16/wishlist/internal/handlers/sessions"
@@ -40,6 +44,37 @@ func newTestServer(t *testing.T) (http.Handler, db.DB) {
 	return handlers.NewServer(store, sm, authentication.New(store)), d
 }
 
+// loginAsAdmin seeds an admin and logs in through POST /login, returning the
+// session cookie for authenticated requests.
+func loginAsAdmin(t *testing.T, server http.Handler, d db.DB) *http.Cookie {
+	t.Helper()
+
+	passwordHash, err := auth.HashPassword("dummy-password")
+	if err != nil {
+		t.Fatalf("HashPassword: %v", err)
+	}
+	if _, err := d.Exec(context.Background(), `
+	INSERT INTO admin (username, password_hash, created_time, last_modified_time)
+	VALUES ('admin', ?, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')
+	`, passwordHash); err != nil {
+		t.Fatalf("seed admin: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader(
+		`{"username": "admin", "password": "dummy-password"}`))
+	rec := httptest.NewRecorder()
+	server.ServeHTTP(rec, req)
+	if got, want := rec.Code, http.StatusOK; got != want {
+		t.Fatalf("login status=%d, want=%d", got, want)
+	}
+
+	cookies := rec.Result().Cookies()
+	if len(cookies) != 1 {
+		t.Fatalf("login set %d cookies, want 1", len(cookies))
+	}
+	return cookies[0]
+}
+
 func TestLoginPageRenders(t *testing.T) {
 	server, _ := newTestServer(t)
 
@@ -64,5 +99,49 @@ func TestAdminRequiresLogin(t *testing.T) {
 	}
 	if got, want := rec.Header().Get("Location"), "/login"; got != want {
 		t.Errorf("Location=%q, want=%q", got, want)
+	}
+}
+
+func TestCrossOriginRequestsAreRejected(t *testing.T) {
+	for _, tt := range []struct {
+		explanation string
+		header      string
+		value       string
+		statusWant  int
+	}{
+		{
+			"browser-flagged cross-site request is rejected",
+			"Sec-Fetch-Site",
+			"cross-site",
+			http.StatusForbidden,
+		},
+		{
+			"request from a foreign origin is rejected",
+			"Origin",
+			"https://evil.example",
+			http.StatusForbidden,
+		},
+		{
+			"browser-flagged same-origin request is allowed",
+			"Sec-Fetch-Site",
+			"same-origin",
+			http.StatusCreated,
+		},
+	} {
+		t.Run(fmt.Sprintf("%s [%s: %s]", tt.explanation, tt.header, tt.value), func(t *testing.T) {
+			server, d := newTestServer(t)
+			cookie := loginAsAdmin(t, server, d)
+
+			req := httptest.NewRequest(http.MethodPost, "/admin/families", strings.NewReader(
+				`{"members": [{"label": "Mom"}]}`))
+			req.AddCookie(cookie)
+			req.Header.Set(tt.header, tt.value)
+			rec := httptest.NewRecorder()
+			server.ServeHTTP(rec, req)
+
+			if got, want := rec.Code, tt.statusWant; got != want {
+				t.Errorf("status=%d, want=%d", got, want)
+			}
+		})
 	}
 }

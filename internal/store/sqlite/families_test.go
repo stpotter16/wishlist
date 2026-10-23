@@ -200,3 +200,129 @@ func TestGetUnclaimedFamilyNotFound(t *testing.T) {
 		})
 	}
 }
+
+func TestCreateFamily(t *testing.T) {
+	s, _ := newTestStore(t)
+	ctx := context.Background()
+
+	childAge := 7
+	id, err := s.CreateFamily(ctx, types.Family{
+		Members: []types.FamilyMember{
+			{
+				Label:                 "Mom",
+				Gender:                "F",
+				ShirtSize:             "L",
+				PantSize:              "12",
+				ShoeSize:              "8",
+				PreferredBrandsColors: "Blue",
+				PreferredScents:       "Lavender",
+				PreferredGiftCards:    "Target",
+				AdditionalInfo:        "Loves gardening",
+				Needs: []types.WishlistItem{
+					{Name: "Winter coat"},
+				},
+			},
+			{
+				Label:            "Child, 7",
+				Age:              &childAge,
+				PrefersUnscented: true,
+				Needs: []types.WishlistItem{
+					{Name: "Rain boots"},
+				},
+				Wishes: []types.WishlistItem{
+					{Name: "LEGO set"},
+					{Name: "Art supplies"},
+				},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateFamily: %v", err)
+	}
+
+	family, err := s.GetUnclaimedFamily(ctx, id)
+	if err != nil {
+		t.Fatalf("GetUnclaimedFamily: %v", err)
+	}
+
+	// On a fresh database, SQLite assigns member and item IDs starting at 1 in
+	// insertion order.
+	want := types.Family{
+		ID: id,
+		Members: []types.FamilyMember{
+			{
+				ID:                    1,
+				Label:                 "Mom",
+				Gender:                "F",
+				ShirtSize:             "L",
+				PantSize:              "12",
+				ShoeSize:              "8",
+				PreferredBrandsColors: "Blue",
+				PreferredScents:       "Lavender",
+				PreferredGiftCards:    "Target",
+				AdditionalInfo:        "Loves gardening",
+				Needs: []types.WishlistItem{
+					{ID: 1, Name: "Winter coat"},
+				},
+			},
+			{
+				ID:               2,
+				Label:            "Child, 7",
+				Age:              &childAge,
+				PrefersUnscented: true,
+				Needs: []types.WishlistItem{
+					{ID: 2, Name: "Rain boots"},
+				},
+				Wishes: []types.WishlistItem{
+					{ID: 3, Name: "LEGO set"},
+					{ID: 4, Name: "Art supplies"},
+				},
+			},
+		},
+	}
+	if got := family; !reflect.DeepEqual(got, want) {
+		t.Errorf("family=%+v, want=%+v", got, want)
+	}
+}
+
+func TestListFamilies(t *testing.T) {
+	s, d := newTestStore(t)
+	ctx := context.Background()
+
+	// Family 1 is unclaimed. Family 2 is claimed. Family 3 has no members.
+	if _, err := d.Exec(ctx, `
+	INSERT INTO family (id, created_time, last_modified_time) VALUES
+		(1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+		(2, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+		(3, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+	INSERT INTO family_member
+		(family_id, label, created_time, last_modified_time)
+	VALUES
+		(1, 'Mom', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+		(1, 'Child, 7', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+		(2, 'Dad', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+	INSERT INTO claim (
+		family_id, giver_name, giver_email, giver_phone, access_token_hash,
+		created_time
+	) VALUES (
+		2, 'Giver', 'giver@example.com', '555-0100', 'dummy-hash',
+		'2026-01-01T00:00:00Z'
+	);
+	`); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	families, err := s.ListFamilies(ctx)
+	if err != nil {
+		t.Fatalf("ListFamilies: %v", err)
+	}
+
+	want := []types.FamilySummary{
+		{ID: 1, MemberLabels: []string{"Mom", "Child, 7"}, IsClaimed: false},
+		{ID: 2, MemberLabels: []string{"Dad"}, IsClaimed: true},
+		{ID: 3, MemberLabels: nil, IsClaimed: false},
+	}
+	if got := families; !reflect.DeepEqual(got, want) {
+		t.Errorf("families=%+v, want=%+v", got, want)
+	}
+}

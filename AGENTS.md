@@ -45,6 +45,8 @@ Wishlist is a web app for an annual adopt-a-family gift drive.
 ## Routes
 
 - `GET` routes render HTML pages. Mutations are JSON endpoints that page scripts call with `fetch`, following the login page's pattern.
+- `http.CrossOriginProtection` in `NewServer` guards against CSRF by rejecting cross-origin `POST`, `PUT`, and `DELETE` requests from browsers. There are no CSRF tokens.
+  - Never change state in a `GET` handler, since the protection skips safe methods.
 - Public routes (givers, no login):
   - `GET /`: unclaimed families, each shown as "Family N" with its member labels.
   - `GET /families/{id}`: a family's members, sizes, preferences, needs, and wishes. Returns 404 once the family is claimed.
@@ -53,7 +55,8 @@ Wishlist is a web app for an annual adopt-a-family gift drive.
 - Admin routes (session required):
   - `GET /login`, `POST /login`, `POST /logout`.
   - `GET /admin`: every family with its claim status.
-  - `POST /admin/families`: creates an empty family.
+  - `GET /admin/families/new`: one form for transcribing a family's intake sheets, with a section per member.
+  - `POST /admin/families`: creates a family with all its members and wishlist items in one transaction. Responds with the new family's ID.
   - `GET /admin/families/{id}`: edits members and items, and shows the giver's contact details if claimed.
   - `DELETE /admin/families/{id}`.
   - `POST /admin/families/{id}/members`, `PUT /admin/members/{id}`, `DELETE /admin/members/{id}`.

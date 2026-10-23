@@ -17,6 +17,8 @@ type Store interface {
 	CreateAdmin(ctx context.Context, username, passwordHash string) error
 
 	// Families
+	CreateFamily(ctx context.Context, family types.Family) (int, error)
+	ListFamilies(ctx context.Context) ([]types.FamilySummary, error)
 	ListUnclaimedFamilies(ctx context.Context) ([]types.FamilySummary, error)
 	GetUnclaimedFamily(ctx context.Context, id int) (types.Family, error)
 }

@@ -16,7 +16,10 @@ func NewServer(
 ) http.Handler {
 	mux := http.NewServeMux()
 	addRoutes(mux, store, sessionManager, authenticator)
-	handler := middleware.CspMiddleware(mux)
+	// CrossOriginProtection rejects cross-origin, state-changing browser
+	// requests, which protects every POST, PUT, and DELETE from CSRF.
+	handler := http.NewCrossOriginProtection().Handler(mux)
+	handler = middleware.CspMiddleware(handler)
 	handler = middleware.LoggingWrapper(handler)
 	return handler
 }

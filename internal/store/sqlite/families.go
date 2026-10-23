@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"time"
 
 	"github.com/stpotter16/wishlist/internal/store"
 	"github.com/stpotter16/wishlist/internal/types"
@@ -163,4 +164,155 @@ func (s Store) GetUnclaimedFamily(ctx context.Context, id int) (types.Family, er
 	}
 
 	return family, nil
+}
+
+// CreateFamily inserts a family with its members and their wishlist items in
+// one transaction and returns the new family's ID.
+func (s Store) CreateFamily(ctx context.Context, family types.Family) (int, error) {
+	now := formatTime(time.Now().UTC())
+	var familyID int64
+
+	err := s.db.WithTx(ctx, func(tx *sql.Tx) error {
+		result, err := tx.ExecContext(ctx,
+			`INSERT INTO family (created_time, last_modified_time) VALUES (?, ?)`,
+			now, now,
+		)
+		if err != nil {
+			return err
+		}
+		familyID, err = result.LastInsertId()
+		if err != nil {
+			return err
+		}
+
+		for _, m := range family.Members {
+			var age sql.NullInt64
+			if m.Age != nil {
+				age = sql.NullInt64{Int64: int64(*m.Age), Valid: true}
+			}
+			prefersUnscented := 0
+			if m.PrefersUnscented {
+				prefersUnscented = 1
+			}
+
+			result, err := tx.ExecContext(ctx, `
+			INSERT INTO family_member (
+				family_id,
+				label,
+				age,
+				gender,
+				shirt_size,
+				pant_size,
+				shoe_size,
+				preferred_brands_colors,
+				preferred_scents,
+				prefers_unscented,
+				preferred_gift_cards,
+				additional_info,
+				created_time,
+				last_modified_time
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				familyID,
+				m.Label,
+				age,
+				m.Gender,
+				m.ShirtSize,
+				m.PantSize,
+				m.ShoeSize,
+				m.PreferredBrandsColors,
+				m.PreferredScents,
+				prefersUnscented,
+				m.PreferredGiftCards,
+				m.AdditionalInfo,
+				now,
+				now,
+			)
+			if err != nil {
+				return err
+			}
+			memberID, err := result.LastInsertId()
+			if err != nil {
+				return err
+			}
+
+			if err := insertWishlistItems(ctx, tx, memberID, "need", m.Needs, now); err != nil {
+				return err
+			}
+			if err := insertWishlistItems(ctx, tx, memberID, "wish", m.Wishes, now); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+
+	return int(familyID), nil
+}
+
+func insertWishlistItems(ctx context.Context, tx *sql.Tx, memberID int64, kind string, items []types.WishlistItem, now string) error {
+	for _, item := range items {
+		if _, err := tx.ExecContext(ctx, `
+		INSERT INTO wishlist_item (
+			family_member_id,
+			kind,
+			name,
+			notes,
+			created_time,
+			last_modified_time
+		) VALUES (?, ?, ?, ?, ?, ?)`,
+			memberID, kind, item.Name, item.Notes, now, now,
+		); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ListFamilies returns every family, including claimed families and families
+// with no members, ordered by family ID.
+func (s Store) ListFamilies(ctx context.Context) ([]types.FamilySummary, error) {
+	rows, err := s.db.Query(ctx, `
+	SELECT
+		family.id,
+		family_member.label,
+		EXISTS (SELECT 1 FROM claim WHERE claim.family_id = family.id)
+	FROM
+		family
+	LEFT JOIN family_member ON family_member.family_id = family.id
+	ORDER BY
+		family.id,
+		family_member.id
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	families := []types.FamilySummary{}
+	for rows.Next() {
+		var familyID int
+		var memberLabel sql.NullString
+		var isClaimed int
+		if err := rows.Scan(&familyID, &memberLabel, &isClaimed); err != nil {
+			return nil, err
+		}
+		if len(families) == 0 || families[len(families)-1].ID != familyID {
+			families = append(families, types.FamilySummary{
+				ID:        familyID,
+				IsClaimed: isClaimed != 0,
+			})
+		}
+		if memberLabel.Valid {
+			last := &families[len(families)-1]
+			last.MemberLabels = append(last.MemberLabels, memberLabel.String)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return families, nil
 }

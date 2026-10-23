@@ -1,12 +1,14 @@
 package types
 
-// FamilySummary is the public, anonymous view of a family in a listing.
+// FamilySummary is the anonymous view of a family in a listing.
 type FamilySummary struct {
 	ID           int
 	MemberLabels []string
+	IsClaimed    bool
 }
 
 // Family is the full, anonymous view of a family and its members' wishlists.
+// When creating a family, the store ignores every ID field.
 type Family struct {
 	ID      int
 	Members []FamilyMember
