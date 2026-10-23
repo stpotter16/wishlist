@@ -33,7 +33,8 @@ Wishlist is a web app for an annual adopt-a-family gift drive.
   - Only admins can read giver contact details.
 - Claimed families disappear from the public family listing.
 - Only admins can release a claim. Givers cannot unclaim a family.
-- Browsing unclaimed families requires no login or access code.
+- Browsing and claiming unclaimed families requires no login or access code.
+  - Open decision: nothing stops one person from claiming every family with fake emails. Gating (a shared code, admin approval, etc.) is deferred, but must be decided before launch.
 - Givers return to their claimed family through a private link that carries a random token. The app may email this link to the giver.
 
 ## Lifecycle
@@ -41,15 +42,28 @@ Wishlist is a web app for an annual adopt-a-family gift drive.
 - The drive runs once a year. Each season starts by wiping the database, so the schema has no concept of seasons or campaigns.
 - Tracking gift drop-off or delivery is out of scope for now.
 
+## Routes
+
+- `GET` routes render HTML pages. Mutations are JSON endpoints that page scripts call with `fetch`, following the login page's pattern.
+- Public routes (givers, no login):
+  - `GET /`: unclaimed families, each shown as "Family N" with its member labels.
+  - `GET /families/{id}`: a family's members, sizes, preferences, needs, and wishes. Returns 404 once the family is claimed.
+  - `POST /families/{id}/claim`: takes the giver's name, email, and phone; responds with the giver's private link. Returns 409 if the family is already claimed or the email has already claimed a family.
+  - `GET /claims/{token}`: the giver's private view of their family.
+- Admin routes (session required):
+  - `GET /login`, `POST /login`, `POST /logout`.
+  - `GET /admin`: every family with its claim status.
+  - `POST /admin/families`: creates an empty family.
+  - `GET /admin/families/{id}`: edits members and items, and shows the giver's contact details if claimed.
+  - `DELETE /admin/families/{id}`.
+  - `POST /admin/families/{id}/members`, `PUT /admin/members/{id}`, `DELETE /admin/members/{id}`.
+  - `POST /admin/members/{id}/items`, `PUT /admin/items/{id}`, `DELETE /admin/items/{id}`.
+  - `DELETE /admin/families/{id}/claim`: releases a claim.
+  - `POST /admin/families/{id}/claim/token`: replaces the giver's link token and returns the new link, so admins can re-send it.
+
 ## Stack
 
 - Go `net/http` server, Go `html/template` views styled with Tailwind, SQLite (with Litestream replication in production), deployed to Fly.io.
-
-## Starter scaffolding
-
-- The repo grew out of a starter template. The "clicks" feature (`clicks` table, `POST /clicks`, the dashboard in `pages/index.html`, `internal/store/sqlite/clicks.go`, `internal/types/click.go`) is placeholder code.
-  - Replace it as real wishlist features land, and delete it once nothing depends on it.
-  - Do not build new features on top of it.
 
 ## Layout
 
