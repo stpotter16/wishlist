@@ -28,6 +28,7 @@ func addRoutes(
 	viewAuthRequired := middleware.NewViewAuthenticationRequiredMiddleware(sessionManager)
 	mux.Handle("GET /admin", viewAuthRequired(adminGet(store)))
 	mux.Handle("GET /admin/families/new", viewAuthRequired(adminNewFamilyGet()))
+	mux.Handle("GET /admin/families/{id}", viewAuthRequired(adminFamilyGet(store)))
 
 	// Public API endpoints
 	mux.HandleFunc("POST /families/{id}/claim", familyClaimPost(store))
@@ -38,4 +39,6 @@ func addRoutes(
 	// Session authenticated API endpoints
 	apiAuthRequired := middleware.NewApiAuthenticationRequiredMiddleware(sessionManager)
 	mux.Handle("POST /admin/families", apiAuthRequired(adminFamiliesPost(store)))
+	mux.Handle("DELETE /admin/families/{id}/claim", apiAuthRequired(adminClaimDelete(store)))
+	mux.Handle("POST /admin/families/{id}/claim/token", apiAuthRequired(adminClaimTokenPost(store)))
 }

@@ -92,3 +92,70 @@ func (s Store) GetClaimedFamily(ctx context.Context, accessTokenHash string) (ty
 
 	return s.loadFamily(ctx, familyID)
 }
+
+// GetClaim returns the claim on a family. It returns store.ErrClaimNotFound if
+// the family is unclaimed.
+func (s Store) GetClaim(ctx context.Context, familyID int) (types.Claim, error) {
+	var c types.Claim
+	var createdTime string
+	err := s.db.QueryRow(ctx, `
+	SELECT
+		giver_name,
+		giver_email,
+		giver_phone,
+		created_time
+	FROM
+		claim
+	WHERE
+		family_id = ?
+	`, familyID).Scan(&c.Giver.Name, &c.Giver.Email, &c.Giver.Phone, &createdTime)
+	if errors.Is(err, sql.ErrNoRows) {
+		return types.Claim{}, store.ErrClaimNotFound
+	}
+	if err != nil {
+		return types.Claim{}, err
+	}
+
+	c.CreatedTime, err = parseTime(createdTime)
+	if err != nil {
+		return types.Claim{}, err
+	}
+
+	return c, nil
+}
+
+// DeleteClaim releases a family's claim, which returns the family to the
+// public listing and invalidates the giver's private link. It returns
+// store.ErrClaimNotFound if the family is unclaimed.
+func (s Store) DeleteClaim(ctx context.Context, familyID int) error {
+	result, err := s.db.Exec(ctx, `DELETE FROM claim WHERE family_id = ?`, familyID)
+	if err != nil {
+		return err
+	}
+	return requireOneRow(result, store.ErrClaimNotFound)
+}
+
+// ReplaceClaimToken swaps a claim's access token hash, which invalidates the
+// giver's old private link. It returns store.ErrClaimNotFound if the family is
+// unclaimed.
+func (s Store) ReplaceClaimToken(ctx context.Context, familyID int, accessTokenHash string) error {
+	result, err := s.db.Exec(ctx,
+		`UPDATE claim SET access_token_hash = ? WHERE family_id = ?`,
+		accessTokenHash, familyID,
+	)
+	if err != nil {
+		return err
+	}
+	return requireOneRow(result, store.ErrClaimNotFound)
+}
+
+func requireOneRow(result sql.Result, errNoRows error) error {
+	n, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return errNoRows
+	}
+	return nil
+}

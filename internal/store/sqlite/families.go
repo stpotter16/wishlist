@@ -66,13 +66,37 @@ func (s Store) GetUnclaimedFamily(ctx context.Context, id int) (types.Family, er
 		return types.Family{}, store.ErrFamilyNotFound
 	}
 
+	family, err := s.loadFamily(ctx, id)
+	if err != nil {
+		return types.Family{}, err
+	}
+	if len(family.Members) == 0 {
+		return types.Family{}, store.ErrFamilyNotFound
+	}
+	return family, nil
+}
+
+// GetFamily returns any family with its members and their wishlists, for
+// admins. It returns store.ErrFamilyNotFound if the family doesn't exist.
+func (s Store) GetFamily(ctx context.Context, id int) (types.Family, error) {
 	return s.loadFamily(ctx, id)
 }
 
 // loadFamily returns a family with its members and their wishlists, whether
-// or not it is claimed. It returns store.ErrFamilyNotFound if the family
-// doesn't exist or has no members.
+// or not it is claimed or has members. It returns store.ErrFamilyNotFound if
+// the family doesn't exist.
 func (s Store) loadFamily(ctx context.Context, id int) (types.Family, error) {
+	var exists int
+	if err := s.db.QueryRow(ctx,
+		`SELECT EXISTS (SELECT 1 FROM family WHERE id = ?)`,
+		id,
+	).Scan(&exists); err != nil {
+		return types.Family{}, err
+	}
+	if exists == 0 {
+		return types.Family{}, store.ErrFamilyNotFound
+	}
+
 	rows, err := s.db.Query(ctx, `
 	SELECT
 		family_member.id,
@@ -132,10 +156,6 @@ func (s Store) loadFamily(ctx context.Context, id int) (types.Family, error) {
 	if err := rows.Err(); err != nil {
 		return types.Family{}, err
 	}
-	if len(family.Members) == 0 {
-		return types.Family{}, store.ErrFamilyNotFound
-	}
-
 	itemRows, err := s.db.Query(ctx, `
 	SELECT
 		wishlist_item.id,

@@ -24,8 +24,12 @@ type Store interface {
 	ListFamilies(ctx context.Context) ([]types.FamilySummary, error)
 	ListUnclaimedFamilies(ctx context.Context) ([]types.FamilySummary, error)
 	GetUnclaimedFamily(ctx context.Context, id int) (types.Family, error)
+	GetFamily(ctx context.Context, id int) (types.Family, error)
 
 	// Claims
 	CreateClaim(ctx context.Context, claim types.NewClaim) error
 	GetClaimedFamily(ctx context.Context, accessTokenHash string) (types.Family, error)
+	GetClaim(ctx context.Context, familyID int) (types.Claim, error)
+	DeleteClaim(ctx context.Context, familyID int) error
+	ReplaceClaimToken(ctx context.Context, familyID int, accessTokenHash string) error
 }

@@ -35,7 +35,8 @@ Wishlist is a web app for an annual adopt-a-family gift drive.
 - Only admins can release a claim. Givers cannot unclaim a family.
 - Browsing and claiming unclaimed families requires no login or access code.
   - Open decision: nothing stops one person from claiming every family with fake emails. Gating (a shared code, admin approval, etc.) is deferred, but must be decided before launch.
-- Givers return to their claimed family through a private link that carries a random token. The app may email this link to the giver.
+- Givers return to their claimed family through a private link that carries a random token.
+  - Open decision: the app only shows the link on screen after claiming, so a giver who loses it can't recover it. Emailing the link (provider, automatic vs. admin-triggered sends) still needs to be decided before launch.
   - The database stores only the SHA-256 hash of each token (`internal/auth/token.go`).
   - Never log a token. The request logger redacts paths under `/claims/`.
   - Pages under `/claims/` send `Cache-Control: no-store` and `Referrer-Policy: no-referrer`.
@@ -60,7 +61,7 @@ Wishlist is a web app for an annual adopt-a-family gift drive.
   - `GET /admin`: every family with its claim status.
   - `GET /admin/families/new`: one form for transcribing a family's intake sheets, with a section per member.
   - `POST /admin/families`: creates a family with all its members and wishlist items in one transaction. Responds with the new family's ID.
-  - `GET /admin/families/{id}`: edits members and items, and shows the giver's contact details if claimed.
+  - `GET /admin/families/{id}`: shows a family's members, its claim status, and the giver's contact details if claimed. It hosts the release and new-link actions. Editing members and items here is planned.
   - `DELETE /admin/families/{id}`.
   - `POST /admin/families/{id}/members`, `PUT /admin/members/{id}`, `DELETE /admin/members/{id}`.
   - `POST /admin/members/{id}/items`, `PUT /admin/items/{id}`, `DELETE /admin/items/{id}`.
