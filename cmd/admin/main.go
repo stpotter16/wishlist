@@ -14,11 +14,13 @@ import (
 	"github.com/stpotter16/wishlist/internal/store"
 	"github.com/stpotter16/wishlist/internal/store/db"
 	"github.com/stpotter16/wishlist/internal/store/sqlite"
+	"golang.org/x/term"
 )
 
 const usage = `usage: admin create <username>
 
-Reads the new admin's password from the first line of stdin.`
+Prompts for the new admin's password without echoing it. When stdin is not a
+terminal, reads the password from the first line of stdin instead.`
 
 func run(
 	ctx context.Context,
@@ -40,12 +42,10 @@ func run(
 		return errors.New("WISHLIST_DB_PATH environment variable not set")
 	}
 
-	fmt.Fprint(stderr, "Password: ")
-	password, err := bufio.NewReader(stdin).ReadString('\n')
-	if err != nil && !errors.Is(err, io.EOF) {
-		return fmt.Errorf("could not read password: %w", err)
+	password, err := readPassword(stdin, stderr)
+	if err != nil {
+		return err
 	}
-	password = strings.TrimRight(password, "\r\n")
 	if password == "" {
 		return errors.New("password must not be empty")
 	}
@@ -74,6 +74,37 @@ func run(
 
 	fmt.Fprintf(stdout, "Created admin %q\n", username)
 	return nil
+}
+
+func readPassword(stdin io.Reader, stderr io.Writer) (string, error) {
+	f, ok := stdin.(*os.File)
+	if !ok || !term.IsTerminal(int(f.Fd())) {
+		line, err := bufio.NewReader(stdin).ReadString('\n')
+		if err != nil && !errors.Is(err, io.EOF) {
+			return "", fmt.Errorf("could not read password: %w", err)
+		}
+		return strings.TrimRight(line, "\r\n"), nil
+	}
+
+	fmt.Fprint(stderr, "Password: ")
+	password, err := term.ReadPassword(int(f.Fd()))
+	fmt.Fprintln(stderr)
+	if err != nil {
+		return "", fmt.Errorf("could not read password: %w", err)
+	}
+
+	fmt.Fprint(stderr, "Confirm password: ")
+	confirmation, err := term.ReadPassword(int(f.Fd()))
+	fmt.Fprintln(stderr)
+	if err != nil {
+		return "", fmt.Errorf("could not read password: %w", err)
+	}
+
+	if string(password) != string(confirmation) {
+		return "", errors.New("passwords do not match")
+	}
+
+	return string(password), nil
 }
 
 func main() {

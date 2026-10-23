@@ -52,7 +52,7 @@
           pname = "wishlist";
           version = "0.1.0";
           src = ./.;
-          vendorHash = "";
+          vendorHash = "sha256-jtQQlMUAecrJbtTv9W22GIi3uLwsZ3cRukiUuYxKaLw=";
 
           # Build configuration matching Makefile
           subPackages = ["cmd/server" "cmd/admin"];

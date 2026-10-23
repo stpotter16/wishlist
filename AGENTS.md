@@ -107,10 +107,10 @@ Wishlist is a web app for an annual adopt-a-family gift drive.
 
 ## Seeding admins
 
-- `admin create <username>` reads the password from the first line of stdin and needs `WISHLIST_DB_PATH`. It runs migrations, so it works on a fresh database.
+- `admin create <username>` prompts for the password twice without echoing it, and needs `WISHLIST_DB_PATH`. It runs migrations, so it works on a fresh database.
+  - When stdin is not a terminal, it reads the password from the first line of stdin instead, for scripted use.
   - Locally: `make admin/build`, then `./tmp/admin create <username>`.
   - In production, the Docker image ships the CLI as `/app/wishlist-admin`. Run `fly ssh console`, then `/app/wishlist-admin create <username>`.
-- The password prompt echoes what you type. Pipe the password in (e.g. `read -rs pw && printf '%s\n' "$pw" | ./tmp/admin create <username>`) to keep it off screen.
 
 # Frontend
 
