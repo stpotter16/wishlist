@@ -421,7 +421,8 @@ If you learned that methods shouldn't be exported just for testing, add to `AGEN
 # Testing
 
 - After every code change, run `make test/go` and the lint targets relevant to the files you touched (`make lint/go`, `lint/shell`, `lint/sql`, `lint/frontend`) before presenting the solution to the user.
-- Do not write to the filesystem in tests.
+- Do not write to permanent locations on the filesystem in tests.
+  - Temporary directories from `t.TempDir()` are fine. Store and handler tests use them for throwaway SQLite databases.
   - Design production interfaces around file readers or filesystem interfaces rather than the local filesystem.
 - When writing tests to verify a bugfix, follow TDD conventions: write the test with the failing test first, verify the test fails, fix the bug, and verify that the test passes
 
