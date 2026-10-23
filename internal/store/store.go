@@ -9,6 +9,7 @@ import (
 
 var ErrAdminNotFound = errors.New("admin not found")
 var ErrAdminExists = errors.New("admin already exists")
+var ErrFamilyNotFound = errors.New("family not found")
 
 type Store interface {
 	// Admins
@@ -17,4 +18,5 @@ type Store interface {
 
 	// Families
 	ListUnclaimedFamilies(ctx context.Context) ([]types.FamilySummary, error)
+	GetUnclaimedFamily(ctx context.Context, id int) (types.Family, error)
 }

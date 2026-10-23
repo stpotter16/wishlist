@@ -20,6 +20,7 @@ func addRoutes(
 
 	// Views
 	mux.HandleFunc("GET /{$}", familiesGet(store))
+	mux.HandleFunc("GET /families/{id}", familyGet(store))
 	mux.HandleFunc("GET /login", loginGet())
 
 	// Views that need authentication

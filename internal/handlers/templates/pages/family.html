@@ -1,0 +1,128 @@
+{{ define "title" }}Family {{ .Family.ID }}{{ end }}
+{{ define "script-tags" }}{{ end }}
+{{ define "content" }}
+  <main class="max-w-lg mx-auto px-4 pt-8 pb-16">
+    <a href="/" class="text-sm text-accent hover:text-accent-hover"
+      >&larr; All families</a
+    >
+    <h1 class="mt-2 text-2xl font-bold">Family {{ .Family.ID }}</h1>
+    <div class="mt-6 flex flex-col gap-4">
+      {{ range .Family.Members }}
+        <section class="rounded-xl bg-surface p-5 shadow-sm">
+          <h2 class="text-lg font-semibold">{{ .Label }}</h2>
+          {{ if or .Age .Gender }}
+            <p class="text-sm text-muted">
+              {{ with .Age }}Age {{ . }}{{ end }}
+              {{ if and .Age .Gender }}&middot;{{ end }}
+              {{ .Gender }}
+            </p>
+          {{ end }}
+
+          {{ if .Needs }}
+            <h3
+              class="mt-4 text-sm font-semibold uppercase tracking-wide text-muted"
+            >
+              Needs
+            </h3>
+            <ul class="mt-2 flex flex-col gap-1">
+              {{ range .Needs }}
+                <li>
+                  {{ .Name }}
+                  {{ with .Notes }}
+                    <span class="text-sm text-muted">({{ . }})</span>
+                  {{ end }}
+                </li>
+              {{ end }}
+            </ul>
+          {{ end }}
+
+          {{ if .Wishes }}
+            <h3
+              class="mt-4 text-sm font-semibold uppercase tracking-wide text-muted"
+            >
+              Wishes
+            </h3>
+            <ul class="mt-2 flex flex-col gap-1">
+              {{ range .Wishes }}
+                <li>
+                  {{ .Name }}
+                  {{ with .Notes }}
+                    <span class="text-sm text-muted">({{ . }})</span>
+                  {{ end }}
+                </li>
+              {{ end }}
+            </ul>
+          {{ end }}
+
+          {{ if or .ShirtSize .PantSize .ShoeSize }}
+            <h3
+              class="mt-4 text-sm font-semibold uppercase tracking-wide text-muted"
+            >
+              Sizes
+            </h3>
+            <dl class="mt-2 flex flex-wrap gap-x-6 gap-y-1">
+              {{ with .ShirtSize }}
+                <div class="flex gap-1">
+                  <dt class="text-muted">Shirt</dt>
+                  <dd>{{ . }}</dd>
+                </div>
+              {{ end }}
+              {{ with .PantSize }}
+                <div class="flex gap-1">
+                  <dt class="text-muted">Pant</dt>
+                  <dd>{{ . }}</dd>
+                </div>
+              {{ end }}
+              {{ with .ShoeSize }}
+                <div class="flex gap-1">
+                  <dt class="text-muted">Shoe</dt>
+                  <dd>{{ . }}</dd>
+                </div>
+              {{ end }}
+            </dl>
+          {{ end }}
+
+          {{ if or .PreferredBrandsColors .PreferredScents .PrefersUnscented .PreferredGiftCards .AdditionalInfo }}
+            <h3
+              class="mt-4 text-sm font-semibold uppercase tracking-wide text-muted"
+            >
+              Preferences
+            </h3>
+            <dl class="mt-2 flex flex-col gap-2">
+              {{ with .PreferredBrandsColors }}
+                <div>
+                  <dt class="text-sm text-muted">Brands or colors</dt>
+                  <dd>{{ . }}</dd>
+                </div>
+              {{ end }}
+              {{ with .PreferredScents }}
+                <div>
+                  <dt class="text-sm text-muted">Toiletry scents</dt>
+                  <dd>{{ . }}</dd>
+                </div>
+              {{ end }}
+              {{ if .PrefersUnscented }}
+                <div>
+                  <dt class="text-sm text-muted">Sensitive skin</dt>
+                  <dd>Prefers unscented products</dd>
+                </div>
+              {{ end }}
+              {{ with .PreferredGiftCards }}
+                <div>
+                  <dt class="text-sm text-muted">Gift cards</dt>
+                  <dd>{{ . }}</dd>
+                </div>
+              {{ end }}
+              {{ with .AdditionalInfo }}
+                <div>
+                  <dt class="text-sm text-muted">Additional info</dt>
+                  <dd class="whitespace-pre-line">{{ . }}</dd>
+                </div>
+              {{ end }}
+            </dl>
+          {{ end }}
+        </section>
+      {{ end }}
+    </div>
+  </main>
+{{ end }}
