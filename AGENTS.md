@@ -20,6 +20,7 @@ Wishlist is a web app for an annual adopt-a-family gift drive.
   - The app shows a family only by an anonymous label such as "Family 12".
 - Each family member has their own wishlist.
   - The app shows a member by an anonymous label such as "Mom" or "Child, 7", plus age and gender.
+  - The first member of every family is Mom. The family form gives her a fixed "Mom" label, no age or gender fields, and no remove button, since moms rarely want to share their age and the label already implies gender.
   - Admins transcribe each member's paper intake sheet. The sheet has free-text "Need" and "Wish" sections, plus clothing sizes (shirt, pant, shoe), preferred brands or colors, preferred toiletry scents, an unscented-products checkbox for sensitive skin, preferred gift cards, and additional info (sports teams, fandoms, hobbies).
   - Each line of the "Need" and "Wish" sections becomes its own wishlist item, tagged `need` or `wish`.
 - Recipient data stays anonymous. Never store names, addresses, phone numbers, or other identifying information for recipients.

@@ -3,49 +3,54 @@
     data-member
     class="flex flex-col gap-4 rounded-xl bg-surface p-5 shadow-sm"
   >
-    <div class="flex items-center justify-between gap-4">
-      <h2 data-member-heading class="text-lg font-semibold"></h2>
-      <button
-        data-action="remove"
-        type="button"
-        class="rounded-md px-2 py-1 text-sm text-danger hover:bg-danger-surface disabled:opacity-50"
-      >
-        Remove
-      </button>
-    </div>
-    <label class="block">
-      <span class="mb-1 block text-sm font-semibold">Label</span>
-      <input
-        data-field="label"
-        value="{{ .Label }}"
-        type="text"
-        required
-        placeholder="e.g. Mom, Child, 7"
-        class="w-full rounded-lg border border-border bg-page px-3 py-2 text-sm focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50"
-      />
-    </label>
-    <div class="grid grid-cols-2 gap-4">
+    {{ if .IsMom }}
+      <h2 class="text-lg font-semibold">Mom</h2>
+      <input data-field="label" type="hidden" value="Mom" />
+    {{ else }}
+      <div class="flex items-center justify-between gap-4">
+        <h2 data-member-heading class="text-lg font-semibold"></h2>
+        <button
+          data-action="remove"
+          type="button"
+          class="rounded-md px-2 py-1 text-sm text-danger hover:bg-danger-surface disabled:opacity-50"
+        >
+          Remove
+        </button>
+      </div>
       <label class="block">
-        <span class="mb-1 block text-sm font-semibold">Age</span>
+        <span class="mb-1 block text-sm font-semibold">Label</span>
         <input
-          data-field="age"
-          value="{{ with .Age }}{{ . }}{{ end }}"
-          type="number"
-          min="0"
-          max="130"
-          class="w-full rounded-lg border border-border bg-page px-3 py-2 text-sm focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50"
-        />
-      </label>
-      <label class="block">
-        <span class="mb-1 block text-sm font-semibold">Gender</span>
-        <input
-          data-field="gender"
-          value="{{ .Gender }}"
+          data-field="label"
+          value="{{ .Member.Label }}"
           type="text"
+          required
+          placeholder="e.g. Child, 7"
           class="w-full rounded-lg border border-border bg-page px-3 py-2 text-sm focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50"
         />
       </label>
-    </div>
+      <div class="grid grid-cols-2 gap-4">
+        <label class="block">
+          <span class="mb-1 block text-sm font-semibold">Age</span>
+          <input
+            data-field="age"
+            value="{{ with .Member.Age }}{{ . }}{{ end }}"
+            type="number"
+            min="0"
+            max="130"
+            class="w-full rounded-lg border border-border bg-page px-3 py-2 text-sm focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50"
+          />
+        </label>
+        <label class="block">
+          <span class="mb-1 block text-sm font-semibold">Gender</span>
+          <input
+            data-field="gender"
+            value="{{ .Member.Gender }}"
+            type="text"
+            class="w-full rounded-lg border border-border bg-page px-3 py-2 text-sm focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50"
+          />
+        </label>
+      </div>
+    {{ end }}
     <label class="block">
       <span class="mb-1 block text-sm font-semibold">Needs</span>
       <textarea
@@ -53,7 +58,7 @@
         rows="4"
         class="w-full rounded-lg border border-border bg-page px-3 py-2 text-sm focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50"
       >
-{{ itemNames .Needs }}</textarea
+{{ itemNames .Member.Needs }}</textarea
       >
     </label>
     <div class="grid grid-cols-3 gap-4">
@@ -61,7 +66,7 @@
         <span class="mb-1 block text-sm font-semibold">Shirt size</span>
         <input
           data-field="shirtSize"
-          value="{{ .ShirtSize }}"
+          value="{{ .Member.ShirtSize }}"
           type="text"
           class="w-full rounded-lg border border-border bg-page px-3 py-2 text-sm focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50"
         />
@@ -70,7 +75,7 @@
         <span class="mb-1 block text-sm font-semibold">Pant size</span>
         <input
           data-field="pantSize"
-          value="{{ .PantSize }}"
+          value="{{ .Member.PantSize }}"
           type="text"
           class="w-full rounded-lg border border-border bg-page px-3 py-2 text-sm focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50"
         />
@@ -79,7 +84,7 @@
         <span class="mb-1 block text-sm font-semibold">Shoe size</span>
         <input
           data-field="shoeSize"
-          value="{{ .ShoeSize }}"
+          value="{{ .Member.ShoeSize }}"
           type="text"
           class="w-full rounded-lg border border-border bg-page px-3 py-2 text-sm focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50"
         />
@@ -91,7 +96,7 @@
       >
       <input
         data-field="preferredBrandsColors"
-        value="{{ .PreferredBrandsColors }}"
+        value="{{ .Member.PreferredBrandsColors }}"
         type="text"
         class="w-full rounded-lg border border-border bg-page px-3 py-2 text-sm focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50"
       />
@@ -102,7 +107,7 @@
       >
       <input
         data-field="preferredScents"
-        value="{{ .PreferredScents }}"
+        value="{{ .Member.PreferredScents }}"
         type="text"
         class="w-full rounded-lg border border-border bg-page px-3 py-2 text-sm focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50"
       />
@@ -110,7 +115,7 @@
     <label class="flex items-center gap-2">
       <input
         data-field="prefersUnscented"
-        {{ if .PrefersUnscented }}checked{{ end }}
+        {{ if .Member.PrefersUnscented }}checked{{ end }}
         type="checkbox"
         class="size-4 accent-accent disabled:opacity-50"
       />
@@ -125,14 +130,14 @@
         rows="4"
         class="w-full rounded-lg border border-border bg-page px-3 py-2 text-sm focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50"
       >
-{{ itemNames .Wishes }}</textarea
+{{ itemNames .Member.Wishes }}</textarea
       >
     </label>
     <label class="block">
       <span class="mb-1 block text-sm font-semibold">Preferred gift cards</span>
       <input
         data-field="preferredGiftCards"
-        value="{{ .PreferredGiftCards }}"
+        value="{{ .Member.PreferredGiftCards }}"
         type="text"
         class="w-full rounded-lg border border-border bg-page px-3 py-2 text-sm focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50"
       />
@@ -147,7 +152,7 @@
         placeholder="Favorite sports team, fandoms, hobbies"
         class="w-full rounded-lg border border-border bg-page px-3 py-2 text-sm focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50"
       >
-{{ .AdditionalInfo }}</textarea
+{{ .Member.AdditionalInfo }}</textarea
       >
     </label>
   </fieldset>

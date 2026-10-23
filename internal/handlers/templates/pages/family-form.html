@@ -5,23 +5,27 @@
     const members = document.getElementById("members");
     const memberTemplate = document.getElementById("member-template");
 
+    // Mom's section comes first and has a fixed heading, so the others are
+    // numbered from 2.
     function renumberMembers() {
-      const sections = members.querySelectorAll("[data-member]");
-      sections.forEach((section, i) => {
-        section.querySelector("[data-member-heading]").textContent =
-          `Member ${i + 1}`;
-        section.querySelector("[data-action='remove']").hidden =
-          sections.length === 1;
+      members.querySelectorAll("[data-member]").forEach((section, i) => {
+        const heading = section.querySelector("[data-member-heading]");
+        if (heading) {
+          heading.textContent = `Member ${i + 1}`;
+        }
       });
     }
 
     function wireRemoveButton(section) {
-      section
-        .querySelector("[data-action='remove']")
-        .addEventListener("click", () => {
-          section.remove();
-          renumberMembers();
-        });
+      const remove = section.querySelector("[data-action='remove']");
+      // Mom's section can't be removed.
+      if (!remove) {
+        return;
+      }
+      remove.addEventListener("click", () => {
+        section.remove();
+        renumberMembers();
+      });
     }
 
     function addMember() {
@@ -32,8 +36,11 @@
       return section;
     }
 
+    // Mom's section has no age or gender fields, so missing fields read as
+    // blank.
     function fieldValue(section, name) {
-      return section.querySelector(`[data-field='${name}']`).value;
+      const field = section.querySelector(`[data-field='${name}']`);
+      return field ? field.value : "";
     }
 
     function readMember(section) {
@@ -109,9 +116,6 @@
     });
 
     members.querySelectorAll("[data-member]").forEach(wireRemoveButton);
-    if (members.children.length === 0) {
-      addMember();
-    }
     renumberMembers();
   </script>
 {{ end }}
@@ -147,8 +151,10 @@
     class="mt-6 flex flex-col gap-4"
   >
     <div id="members" class="flex flex-col gap-4">
-      {{ range .Family.Members }}
-        {{ template "member-fieldset" . }}
+      {{ range $i, $member := .Family.Members }}
+        {{ template "member-fieldset" (memberSection $member (eq $i 0)) }}
+      {{ else }}
+        {{ template "member-fieldset" (memberSection .EmptyMember true) }}
       {{ end }}
     </div>
     <button
@@ -167,6 +173,6 @@
   </form>
 
   <template id="member-template">
-    {{ template "member-fieldset" .EmptyMember }}
+    {{ template "member-fieldset" (memberSection .EmptyMember false) }}
   </template>
 {{ end }}

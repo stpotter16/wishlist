@@ -473,6 +473,9 @@ func TestAdminEditFamilyPageIsPrefilled(t *testing.T) {
 		id, family_id, label, age, shirt_size, prefers_unscented,
 		created_time, last_modified_time
 	) VALUES (
+		9, 1, 'Mom', NULL, '', 0,
+		'2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'
+	), (
 		10, 1, 'Child, 7', 7, 'Youth M', 1,
 		'2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'
 	);
@@ -713,5 +716,65 @@ func TestAdminPagesOfferLogout(t *testing.T) {
 
 	if got, want := rec.Body.String(), `id="logout"`; !strings.Contains(got, want) {
 		t.Errorf("body is missing %q", want)
+	}
+}
+
+func TestFamilyFormStartsWithMom(t *testing.T) {
+	server, d := newTestServer(t)
+	cookie := loginAsAdmin(t, server, d)
+
+	req := httptest.NewRequest(http.MethodGet, "/admin/families/new", nil)
+	req.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	server.ServeHTTP(rec, req)
+
+	if got, want := rec.Code, http.StatusOK; got != want {
+		t.Fatalf("status=%d, want=%d", got, want)
+	}
+	body := rec.Body.String()
+	if !regexp.MustCompile(`data-field="label"\s+type="hidden"\s+value="Mom"`).MatchString(body) {
+		t.Errorf("form doesn't start with a Mom section")
+	}
+	// Mom's section has no age or gender fields, so only the blank section
+	// that "Add member" clones has them.
+	if got, want := strings.Count(body, `data-field="age"`), 1; got != want {
+		t.Errorf("age fields=%d, want=%d", got, want)
+	}
+	if got, want := strings.Count(body, `data-field="gender"`), 1; got != want {
+		t.Errorf("gender fields=%d, want=%d", got, want)
+	}
+}
+
+func TestEditFamilyFormTreatsFirstMemberAsMom(t *testing.T) {
+	server, d := newTestServer(t)
+	cookie := loginAsAdmin(t, server, d)
+
+	if _, err := d.Exec(context.Background(), `
+	INSERT INTO family (id, created_time, last_modified_time) VALUES
+		(1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+	INSERT INTO family_member
+		(family_id, label, age, created_time, last_modified_time)
+	VALUES
+		(1, 'Mom', NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+		(1, 'Child, 7', 7, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+	`); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/admin/families/1/edit", nil)
+	req.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	server.ServeHTTP(rec, req)
+
+	body := rec.Body.String()
+	if !regexp.MustCompile(`data-field="label"\s+type="hidden"\s+value="Mom"`).MatchString(body) {
+		t.Errorf("form doesn't render the first member as Mom")
+	}
+	// The child's section and the "Add member" template have age fields.
+	if got, want := strings.Count(body, `data-field="age"`), 2; got != want {
+		t.Errorf("age fields=%d, want=%d", got, want)
+	}
+	if !strings.Contains(body, `value="Child, 7"`) {
+		t.Errorf("form is missing the child's label")
 	}
 }

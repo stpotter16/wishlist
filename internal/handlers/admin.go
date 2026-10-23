@@ -62,14 +62,25 @@ type familyFormProps struct {
 	SubmitMethod string
 	SubmitURL    string
 	Family       types.Family
-	// EmptyMember renders the blank section that "Add member" clones.
+	// EmptyMember renders Mom's section on a new family and the blank section
+	// that "Add member" clones.
 	EmptyMember types.FamilyMember
+}
+
+// memberSection is what the member-fieldset partial renders. Mom's section,
+// always first, has no age, gender, or remove button.
+type memberSection struct {
+	Member types.FamilyMember
+	IsMom  bool
 }
 
 func parseFamilyFormTemplate() *template.Template {
 	return template.Must(
 		template.New("base.html").
 			Funcs(template.FuncMap{
+				"memberSection": func(member types.FamilyMember, isMom bool) memberSection {
+					return memberSection{Member: member, IsMom: isMom}
+				},
 				// itemNames puts one item per line, the format the form's
 				// needs and wishes textareas use.
 				"itemNames": func(items []types.WishlistItem) string {
