@@ -22,7 +22,6 @@ var errorTmpl = template.Must(
 	template.New("base.html").ParseFS(
 		templateFS,
 		"templates/layouts/base.html",
-		"templates/layouts/app.html",
 		"templates/pages/error.html",
 	))
 

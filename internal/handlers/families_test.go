@@ -71,3 +71,27 @@ func TestFamiliesShowsEmptyState(t *testing.T) {
 		t.Errorf("body is missing %q", want)
 	}
 }
+
+func TestFamiliesErrorPageOmitsAdminNav(t *testing.T) {
+	server, d := newTestServer(t)
+
+	// Dropping a table the listing query reads forces the handler's error path.
+	if _, err := d.Exec(context.Background(), `DROP TABLE claim`); err != nil {
+		t.Fatalf("drop claim table: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	server.ServeHTTP(rec, req)
+
+	if got, want := rec.Code, http.StatusInternalServerError; got != want {
+		t.Fatalf("status=%d, want=%d", got, want)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, "Something went wrong") {
+		t.Errorf("body is missing error message")
+	}
+	if strings.Contains(body, `href="/admin"`) {
+		t.Errorf("body contains link to admin dashboard")
+	}
+}
