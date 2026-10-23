@@ -39,6 +39,7 @@ func addRoutes(
 
 	// Session authenticated API endpoints
 	apiAuthRequired := middleware.NewApiAuthenticationRequiredMiddleware(sessionManager)
+	mux.Handle("POST /logout", apiAuthRequired(logoutPost(sessionManager)))
 	mux.Handle("POST /admin/families", apiAuthRequired(adminFamiliesPost(store)))
 	mux.Handle("PUT /admin/families/{id}", apiAuthRequired(adminFamilyPut(store)))
 	mux.Handle("DELETE /admin/families/{id}", apiAuthRequired(adminFamilyDelete(store)))

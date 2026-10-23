@@ -701,3 +701,17 @@ func TestAdminFamilyEditAndDeleteErrors(t *testing.T) {
 		})
 	}
 }
+
+func TestAdminPagesOfferLogout(t *testing.T) {
+	server, d := newTestServer(t)
+	cookie := loginAsAdmin(t, server, d)
+
+	req := httptest.NewRequest(http.MethodGet, "/admin", nil)
+	req.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	server.ServeHTTP(rec, req)
+
+	if got, want := rec.Body.String(), `id="logout"`; !strings.Contains(got, want) {
+		t.Errorf("body is missing %q", want)
+	}
+}

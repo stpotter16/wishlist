@@ -145,3 +145,43 @@ func TestCrossOriginRequestsAreRejected(t *testing.T) {
 		})
 	}
 }
+
+func TestLogoutEndsSession(t *testing.T) {
+	server, d := newTestServer(t)
+	cookie := loginAsAdmin(t, server, d)
+
+	req := httptest.NewRequest(http.MethodPost, "/logout", nil)
+	req.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	server.ServeHTTP(rec, req)
+
+	if got, want := rec.Code, http.StatusNoContent; got != want {
+		t.Fatalf("logout status=%d, want=%d", got, want)
+	}
+	cleared := rec.Result().Cookies()
+	if len(cleared) != 1 || cleared[0].MaxAge >= 0 {
+		t.Errorf("logout cookies=%+v, want one expired session cookie", cleared)
+	}
+
+	// The old cookie no longer grants access, even if the browser kept it.
+	req = httptest.NewRequest(http.MethodGet, "/admin", nil)
+	req.AddCookie(cookie)
+	rec = httptest.NewRecorder()
+	server.ServeHTTP(rec, req)
+
+	if got, want := rec.Code, http.StatusTemporaryRedirect; got != want {
+		t.Errorf("admin status after logout=%d, want=%d", got, want)
+	}
+}
+
+func TestLogoutRequiresLogin(t *testing.T) {
+	server, _ := newTestServer(t)
+
+	req := httptest.NewRequest(http.MethodPost, "/logout", nil)
+	rec := httptest.NewRecorder()
+	server.ServeHTTP(rec, req)
+
+	if got, want := rec.Code, http.StatusUnauthorized; got != want {
+		t.Errorf("status=%d, want=%d", got, want)
+	}
+}

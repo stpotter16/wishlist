@@ -35,3 +35,14 @@ func loginPost(authenticator authentication.Authenticator, sessionManager sessio
 		w.WriteHeader(http.StatusOK)
 	}
 }
+
+func logoutPost(sessionManager sessions.SessionManger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := sessionManager.DeleteSession(w, r); err != nil {
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
