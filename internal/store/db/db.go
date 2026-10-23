@@ -8,8 +8,35 @@ import (
 	"path/filepath"
 	"runtime"
 
-	_ "github.com/mattn/go-sqlite3"
+	"github.com/mattn/go-sqlite3"
 )
+
+// driverName names a go-sqlite3 driver that applies connectionPragmas to every
+// connection it opens. SQLite scopes most PRAGMAs to a single connection, so
+// running them once against a sql.DB pool would miss the pool's other
+// connections.
+const driverName = "sqlite3_with_pragmas"
+
+// https://litestream.io/tips/
+// https://kerkour.com/sqlite-for-servers
+const connectionPragmas = `
+	PRAGMA journal_mode = WAL;
+	PRAGMA busy_timeout = 5000;
+	PRAGMA synchronous = NORMAL;
+	PRAGMA wal_autocheckpoint = 0;
+	PRAGMA cache_size = 1000000000;
+	PRAGMA foreign_keys = true;
+	PRAGMA temp_store = memory;
+`
+
+func init() {
+	sql.Register(driverName, &sqlite3.SQLiteDriver{
+		ConnectHook: func(conn *sqlite3.SQLiteConn) error {
+			_, err := conn.Exec(connectionPragmas, nil)
+			return err
+		},
+	})
+}
 
 type DB struct {
 	writeDB *sql.DB
@@ -22,27 +49,19 @@ func New(directory string) (DB, error) {
 	}
 
 	dbPath := filepath.Join(directory, "wishlist.sqlite")
-	readDB, err := sql.Open("sqlite3", dbPath)
+	readDB, err := sql.Open(driverName, dbPath)
 	if err != nil {
 		log.Printf("Could not open read db: %v", err)
 		return DB{}, err
 	}
 	readDB.SetMaxOpenConns(max(4, runtime.NumCPU()))
-	if err = applyPragmas(readDB); err != nil {
-		log.Printf("Could not apply PRAGMAs to read db: %v", err)
-		return DB{}, err
-	}
 
-	writeDB, err := sql.Open("sqlite3", dbPath)
+	writeDB, err := sql.Open(driverName, dbPath)
 	if err != nil {
 		log.Printf("Could not open write db: %v", err)
 		return DB{}, err
 	}
 	writeDB.SetMaxOpenConns(1)
-	if err = applyPragmas(writeDB); err != nil {
-		log.Printf("Could not apply PRAGMAs to write db: %v", err)
-		return DB{}, err
-	}
 
 	db := DB{
 		readDB:  readDB,
@@ -100,23 +119,6 @@ func (db DB) ExecuteTransaction(ctx context.Context, transactions ...string) err
 	}
 
 	if err = tx.Commit(); err != nil {
-		return err
-	}
-	return nil
-}
-
-func applyPragmas(db *sql.DB) error {
-	if _, err := db.Exec(`
-		-- https://litestream.io/tips/
-		-- https://kerkour.com/sqlite-for-servers
-		PRAGMA journal_mode = WAL;
-		PRAGMA busy_timeout = 5000;
-		PRAGMA synchronous = NORMAL;
-        PRAGMA wal_autocheckpoint = 0;
-		PRAGMA cache_size = 1000000000;
-		PRAGMA foreign_keys = true;
-		PRAGMA temp_store = memory;
-	`); err != nil {
 		return err
 	}
 	return nil
