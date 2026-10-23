@@ -139,9 +139,12 @@ Wishlist is a web app for an annual adopt-a-family gift drive.
 
 ## Design tokens
 
-- `input.css` drops Tailwind's default palette (`--color-*: initial`). Only the semantic tokens defined in `@theme` exist: `page`, `surface`, `border`, `fg`, `muted`, `subtle`, `accent`, `accent-hover`, `on-accent`, `danger`, `danger-surface`.
+- `input.css` drops Tailwind's default palette (`--color-*: initial`). Only the semantic tokens defined in `@theme` exist: `page`, `surface`, `border`, `fg`, `muted`, `subtle`, `accent`, `accent-hover`, `on-accent`, `festive`, `danger`, `danger-surface`.
   - Use them as normal utilities (`bg-page`, `text-muted`, `border-border`).
   - Raw palette classes like `bg-gray-100` silently produce no styles.
+- The palette is Christmas-themed: evergreen `accent` for interactive elements, cranberry `festive` for decoration.
+  - Use `festive` only for non-interactive highlights such as page titles, the claimed badge, and the top stripe. Interactive red would read as a destructive `danger` action.
+  - Check WCAG AA contrast (4.5:1) in both themes when changing token values.
 - Dark mode redefines the same tokens under `prefers-color-scheme: dark`. Do not add `dark:` variants for color.
 - When a new color role is needed, add a token in both the light and dark blocks rather than reaching for a raw color.
 

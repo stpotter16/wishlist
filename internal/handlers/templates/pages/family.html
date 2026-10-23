@@ -55,7 +55,10 @@
     <a href="/" class="text-sm text-accent hover:text-accent-hover"
       >&larr; All families</a
     >
-    <h1 class="mt-2 text-2xl font-bold">Family {{ .Family.ID }}</h1>
+    <h1 class="mt-2 text-2xl font-bold text-festive">
+      Family
+      {{ .Family.ID }}
+    </h1>
     <div class="mt-6 flex flex-col gap-4">
       {{ template "family-members" .Family.Members }}
     </div>

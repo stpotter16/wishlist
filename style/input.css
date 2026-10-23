@@ -10,36 +10,48 @@
   /* Drop Tailwind's default palette so only these tokens are available. */
   --color-*: initial;
 
-  --color-page: oklch(0.985 0.008 75);
-  --color-surface: oklch(0.96 0.016 70);
-  --color-border: oklch(0.88 0.022 65);
-  --color-fg: oklch(0.27 0.03 50);
-  --color-muted: oklch(0.52 0.03 55);
-  --color-subtle: oklch(0.8 0.03 60);
+  /*
+   * Christmas palette: warm snow backgrounds, evergreen for interactive
+   * elements, and cranberry for festive highlights. Every text and background
+   * pairing the templates use meets WCAG AA (4.5:1) in both themes.
+   */
+  --color-page: oklch(0.985 0.012 95);
+  --color-surface: oklch(0.998 0.004 95);
+  --color-border: oklch(0.89 0.025 120);
+  --color-fg: oklch(0.27 0.04 160);
+  --color-muted: oklch(0.48 0.035 160);
+  --color-subtle: oklch(0.8 0.03 150);
 
-  --color-accent: oklch(0.56 0.15 40);
-  --color-accent-hover: oklch(0.5 0.15 40);
-  --color-on-accent: oklch(0.99 0.01 75);
+  /* Evergreen: buttons, links, and focus rings. */
+  --color-accent: oklch(0.45 0.11 155);
+  --color-accent-hover: oklch(0.39 0.1 155);
+  --color-on-accent: oklch(0.99 0.01 95);
 
-  --color-danger: oklch(0.45 0.15 25);
-  --color-danger-surface: oklch(0.93 0.04 25);
+  /* Cranberry: page titles, the claimed badge, and the seasonal stripe. Not for
+     interactive elements, so it never reads as a destructive action. */
+  --color-festive: oklch(0.5 0.18 22);
+
+  --color-danger: oklch(0.47 0.17 28);
+  --color-danger-surface: oklch(0.94 0.035 25);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-page: oklch(0.19 0.015 50);
-    --color-surface: oklch(0.24 0.02 50);
-    --color-border: oklch(0.33 0.022 50);
-    --color-fg: oklch(0.94 0.015 75);
-    --color-muted: oklch(0.72 0.025 65);
-    --color-subtle: oklch(0.4 0.025 55);
+    --color-page: oklch(0.18 0.025 160);
+    --color-surface: oklch(0.23 0.03 160);
+    --color-border: oklch(0.33 0.03 160);
+    --color-fg: oklch(0.95 0.015 95);
+    --color-muted: oklch(0.75 0.025 150);
+    --color-subtle: oklch(0.4 0.03 155);
 
-    --color-accent: oklch(0.7 0.14 45);
-    --color-accent-hover: oklch(0.76 0.13 50);
-    --color-on-accent: oklch(0.2 0.02 45);
+    --color-accent: oklch(0.74 0.13 155);
+    --color-accent-hover: oklch(0.8 0.12 155);
+    --color-on-accent: oklch(0.18 0.03 160);
 
-    --color-danger: oklch(0.85 0.07 25);
-    --color-danger-surface: oklch(0.3 0.07 25);
+    --color-festive: oklch(0.74 0.14 20);
+
+    --color-danger: oklch(0.8 0.1 25);
+    --color-danger-surface: oklch(0.3 0.08 25);
   }
 }
 

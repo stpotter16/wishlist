@@ -55,7 +55,9 @@ func TestClaimFamilyGivesGiverPrivateLink(t *testing.T) {
 	if got, want := rec.Code, http.StatusOK; got != want {
 		t.Fatalf("private link status=%d, want=%d", got, want)
 	}
-	body := rec.Body.String()
+	// Collapse whitespace like a browser does, so template formatting doesn't
+	// matter.
+	body := strings.Join(strings.Fields(rec.Body.String()), " ")
 	if !strings.Contains(body, "You adopted Family 1") {
 		t.Errorf("private link is missing family heading")
 	}
