@@ -50,7 +50,7 @@
       disableLoginForm();
       login(username, password)
         .then(() => {
-          document.location = "/";
+          document.location = "/admin";
         })
         .catch((error) => {
           enableLoginForm();

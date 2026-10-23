@@ -63,14 +63,14 @@ func loginGet() http.HandlerFunc {
 	}
 }
 
-func indexGet() http.HandlerFunc {
+func adminGet() http.HandlerFunc {
 	t := template.Must(
 		template.New("base.html").
 			ParseFS(
 				templateFS,
 				"templates/layouts/base.html",
 				"templates/layouts/app.html",
-				"templates/pages/index.html",
+				"templates/pages/admin.html",
 			))
 	return func(w http.ResponseWriter, r *http.Request) {
 		nonce, err := extractCspNonceOnly(r)
@@ -83,7 +83,7 @@ func indexGet() http.HandlerFunc {
 		props := viewProps{CspNonce: nonce, ActivePage: "dashboard"}
 
 		if err := t.Execute(w, props); err != nil {
-			log.Printf("Could not create index page: %v", err)
+			log.Printf("Could not create admin page: %v", err)
 			renderAppError(w, r, http.StatusInternalServerError)
 		}
 	}

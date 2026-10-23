@@ -5,25 +5,7 @@ import (
 	"testing"
 
 	"github.com/stpotter16/wishlist/internal/store"
-	"github.com/stpotter16/wishlist/internal/store/db"
-	"github.com/stpotter16/wishlist/internal/store/sqlite"
 )
-
-func newTestStore(t *testing.T) sqlite.Store {
-	t.Helper()
-
-	d, err := db.New(t.TempDir())
-	if err != nil {
-		t.Fatalf("db.New: %v", err)
-	}
-
-	s, err := sqlite.New(d)
-	if err != nil {
-		t.Fatalf("sqlite.New: %v", err)
-	}
-
-	return s
-}
 
 func TestCreateAdmin(t *testing.T) {
 	for _, tt := range []struct {
@@ -46,7 +28,7 @@ func TestCreateAdmin(t *testing.T) {
 		},
 	} {
 		t.Run(tt.explanation, func(t *testing.T) {
-			s := newTestStore(t)
+			s, _ := newTestStore(t)
 			ctx := context.Background()
 
 			if err := s.CreateAdmin(ctx, tt.existingUsername, "dummy-hash"); err != nil {
@@ -62,7 +44,7 @@ func TestCreateAdmin(t *testing.T) {
 }
 
 func TestGetAdminByUsername(t *testing.T) {
-	s := newTestStore(t)
+	s, _ := newTestStore(t)
 	ctx := context.Background()
 
 	if err := s.CreateAdmin(ctx, "alice", "alice-hash"); err != nil {
