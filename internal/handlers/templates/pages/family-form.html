@@ -5,34 +5,37 @@
     const members = document.getElementById("members");
     const memberTemplate = document.getElementById("member-template");
 
-    // Mom's section comes first and has a fixed heading, so the others are
-    // numbered from 2.
-    function renumberMembers() {
-      members.querySelectorAll("[data-member]").forEach((section, i) => {
-        const heading = section.querySelector("[data-member-heading]");
-        if (heading) {
-          heading.textContent = `Member ${i + 1}`;
-        }
-      });
-    }
-
-    function wireRemoveButton(section) {
+    // A child's label is built from their age, so the heading previews it.
+    function wireChildSection(section) {
       const remove = section.querySelector("[data-action='remove']");
-      // Mom's section can't be removed.
+      // Mom's section has neither a remove button nor an age.
       if (!remove) {
         return;
       }
       remove.addEventListener("click", () => {
         section.remove();
-        renumberMembers();
       });
+
+      const heading = section.querySelector("[data-member-heading]");
+      section
+        .querySelector("[data-field='age']")
+        .addEventListener("input", (evt) => {
+          // Mirrors the server's labels in parse.ParseFamilyPost.
+          const age = evt.target.value;
+          if (age === "") {
+            heading.textContent = "Child";
+          } else if (Number(age) === 0) {
+            heading.textContent = "Infant";
+          } else {
+            heading.textContent = `Child, ${age}`;
+          }
+        });
     }
 
     function addMember() {
       const section = memberTemplate.content.firstElementChild.cloneNode(true);
-      wireRemoveButton(section);
+      wireChildSection(section);
       members.appendChild(section);
-      renumberMembers();
       return section;
     }
 
@@ -46,7 +49,6 @@
     function readMember(section) {
       const age = fieldValue(section, "age");
       return {
-        label: fieldValue(section, "label"),
         age: age === "" ? null : Number(age),
         gender: fieldValue(section, "gender"),
         shirtSize: fieldValue(section, "shirtSize"),
@@ -88,7 +90,7 @@
     }
 
     document.getElementById("add-member").addEventListener("click", () => {
-      addMember().querySelector("[data-field='label']").focus();
+      addMember().querySelector("[data-field='age']").focus();
     });
 
     document.getElementById("error-close").addEventListener("click", () => {
@@ -115,8 +117,7 @@
         });
     });
 
-    members.querySelectorAll("[data-member]").forEach(wireRemoveButton);
-    renumberMembers();
+    members.querySelectorAll("[data-member]").forEach(wireChildSection);
   </script>
 {{ end }}
 {{ define "page-content" }}

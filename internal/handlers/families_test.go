@@ -144,6 +144,10 @@ func TestFamilyShowsMembersAndWishlists(t *testing.T) {
 	if !strings.Contains(body, "Prefers unscented products") {
 		t.Errorf("body is missing unscented preference")
 	}
+	// The label already says the child's age.
+	if strings.Contains(body, "Age 7") {
+		t.Errorf("body repeats the age from the label")
+	}
 }
 
 func TestFamilyNotFound(t *testing.T) {

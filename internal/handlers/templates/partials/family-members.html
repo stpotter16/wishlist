@@ -2,12 +2,9 @@
   {{ range . }}
     <section class="rounded-xl bg-surface p-5 shadow-sm">
       <h2 class="text-lg font-semibold">{{ .Label }}</h2>
-      {{ if or .Age .Gender }}
-        <p class="text-sm text-muted">
-          {{ with .Age }}Age {{ . }}{{ end }}
-          {{ if and .Age .Gender }}&middot;{{ end }}
-          {{ .Gender }}
-        </p>
+      {{/* Labels like "Child, 7" already include the age. */}}
+      {{ with .Gender }}
+        <p class="text-sm text-muted">{{ . }}</p>
       {{ end }}
 
       {{ if .Needs }}

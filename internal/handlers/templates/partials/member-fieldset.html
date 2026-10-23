@@ -5,10 +5,11 @@
   >
     {{ if .IsMom }}
       <h2 class="text-lg font-semibold">Mom</h2>
-      <input data-field="label" type="hidden" value="Mom" />
     {{ else }}
       <div class="flex items-center justify-between gap-4">
-        <h2 data-member-heading class="text-lg font-semibold"></h2>
+        <h2 data-member-heading class="text-lg font-semibold">
+          {{ with .Member.Label }}{{ . }}{{ else }}Child{{ end }}
+        </h2>
         <button
           data-action="remove"
           type="button"
@@ -17,17 +18,6 @@
           Remove
         </button>
       </div>
-      <label class="block">
-        <span class="mb-1 block text-sm font-semibold">Label</span>
-        <input
-          data-field="label"
-          value="{{ .Member.Label }}"
-          type="text"
-          required
-          placeholder="e.g. Child, 7"
-          class="w-full rounded-lg border border-border bg-page px-3 py-2 text-sm focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50"
-        />
-      </label>
       <div class="grid grid-cols-2 gap-4">
         <label class="block">
           <span class="mb-1 block text-sm font-semibold">Age</span>
@@ -35,6 +25,7 @@
             data-field="age"
             value="{{ with .Member.Age }}{{ . }}{{ end }}"
             type="number"
+            required
             min="0"
             max="130"
             class="w-full rounded-lg border border-border bg-page px-3 py-2 text-sm focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50"

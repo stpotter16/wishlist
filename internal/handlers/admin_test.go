@@ -2,6 +2,7 @@ package handlers_test
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -100,13 +101,20 @@ func TestAdminCreateFamilyPublishesIt(t *testing.T) {
 	server, d := newTestServer(t)
 	cookie := loginAsAdmin(t, server, d)
 
+	// The server labels members itself: the first is always Mom, with no age
+	// or gender, and the rest are children labeled by age.
 	req := httptest.NewRequest(http.MethodPost, "/admin/families", strings.NewReader(`{
 		"members": [{
-			"label": "  Child, 7  ",
+			"label": "Grandma",
+			"age": 40,
+			"gender": "F",
+			"needs": ["Winter coat", "  ", ""]
+		}, {
+			"label": "Ignored",
 			"age": 7,
+			"gender": "Girl",
 			"shirtSize": "Youth M",
 			"prefersUnscented": true,
-			"needs": ["Winter coat", "  ", ""],
 			"wishes": ["LEGO set"]
 		}]
 	}`))
@@ -121,6 +129,40 @@ func TestAdminCreateFamilyPublishesIt(t *testing.T) {
 		t.Fatalf("body=%s, want=%s", got, want)
 	}
 
+	var momLabel, momGender string
+	var momAge sql.NullInt64
+	if err := d.QueryRow(context.Background(),
+		`SELECT label, age, gender FROM family_member ORDER BY id LIMIT 1`,
+	).Scan(&momLabel, &momAge, &momGender); err != nil {
+		t.Fatalf("read mom: %v", err)
+	}
+	if got, want := momLabel, "Mom"; got != want {
+		t.Errorf("first member label=%q, want=%q", got, want)
+	}
+	if momAge.Valid {
+		t.Errorf("first member age=%d, want NULL", momAge.Int64)
+	}
+	if got, want := momGender, ""; got != want {
+		t.Errorf("first member gender=%q, want=%q", got, want)
+	}
+
+	var childLabel, childGender string
+	var childAge int
+	if err := d.QueryRow(context.Background(),
+		`SELECT label, age, gender FROM family_member ORDER BY id LIMIT 1 OFFSET 1`,
+	).Scan(&childLabel, &childAge, &childGender); err != nil {
+		t.Fatalf("read child: %v", err)
+	}
+	if got, want := childLabel, "Child, 7"; got != want {
+		t.Errorf("child label=%q, want=%q", got, want)
+	}
+	if got, want := childAge, 7; got != want {
+		t.Errorf("child age=%d, want=%d", got, want)
+	}
+	if got, want := childGender, "Girl"; got != want {
+		t.Errorf("child gender=%q, want=%q", got, want)
+	}
+
 	// The new family appears on its public page.
 	req = httptest.NewRequest(http.MethodGet, "/families/1", nil)
 	rec = httptest.NewRecorder()
@@ -130,9 +172,6 @@ func TestAdminCreateFamilyPublishesIt(t *testing.T) {
 		t.Fatalf("public status=%d, want=%d", got, want)
 	}
 	body := rec.Body.String()
-	if !strings.Contains(body, ">Child, 7<") {
-		t.Errorf("public page is missing trimmed member label")
-	}
 	if !strings.Contains(body, "Winter coat") {
 		t.Errorf("public page is missing need")
 	}
@@ -155,16 +194,16 @@ func TestAdminCreateFamilyRejectsInvalidInput(t *testing.T) {
 			`{"members": []}`,
 		},
 		{
-			"member without a label is rejected",
-			`{"members": [{"label": "   "}]}`,
+			"child without an age is rejected",
+			`{"members": [{}, {"gender": "Girl"}]}`,
 		},
 		{
-			"member with a negative age is rejected",
-			`{"members": [{"label": "Mom", "age": -1}]}`,
+			"child with a negative age is rejected",
+			`{"members": [{}, {"age": -1}]}`,
 		},
 		{
-			"member with an implausible age is rejected",
-			`{"members": [{"label": "Mom", "age": 131}]}`,
+			"child with an implausible age is rejected",
+			`{"members": [{}, {"age": 131}]}`,
 		},
 	} {
 		t.Run(fmt.Sprintf("%s [%s]", tt.explanation, tt.body), func(t *testing.T) {
@@ -505,8 +544,8 @@ func TestAdminEditFamilyPageIsPrefilled(t *testing.T) {
 	if !strings.Contains(body, `data-submit-url="/admin/families/1"`) {
 		t.Errorf("form doesn't submit to the family")
 	}
-	if !strings.Contains(body, `value="Child, 7"`) {
-		t.Errorf("form is missing member label")
+	if !regexp.MustCompile(`data-member-heading[^>]*>\s*Child, 7\s*</h2>`).MatchString(body) {
+		t.Errorf("form is missing the child's heading")
 	}
 	if !strings.Contains(body, `value="7"`) {
 		t.Errorf("form is missing member age")
@@ -732,8 +771,12 @@ func TestFamilyFormStartsWithMom(t *testing.T) {
 		t.Fatalf("status=%d, want=%d", got, want)
 	}
 	body := rec.Body.String()
-	if !regexp.MustCompile(`data-field="label"\s+type="hidden"\s+value="Mom"`).MatchString(body) {
+	if !strings.Contains(body, `<h2 class="text-lg font-semibold">Mom</h2>`) {
 		t.Errorf("form doesn't start with a Mom section")
+	}
+	// The server builds every label, so the form has no label fields.
+	if strings.Contains(body, `data-field="label"`) {
+		t.Errorf("form has a label field")
 	}
 	// Mom's section has no age or gender fields, so only the blank section
 	// that "Add member" clones has them.
@@ -767,14 +810,39 @@ func TestEditFamilyFormTreatsFirstMemberAsMom(t *testing.T) {
 	server.ServeHTTP(rec, req)
 
 	body := rec.Body.String()
-	if !regexp.MustCompile(`data-field="label"\s+type="hidden"\s+value="Mom"`).MatchString(body) {
+	if !strings.Contains(body, `<h2 class="text-lg font-semibold">Mom</h2>`) {
 		t.Errorf("form doesn't render the first member as Mom")
 	}
 	// The child's section and the "Add member" template have age fields.
 	if got, want := strings.Count(body, `data-field="age"`), 2; got != want {
 		t.Errorf("age fields=%d, want=%d", got, want)
 	}
-	if !strings.Contains(body, `value="Child, 7"`) {
-		t.Errorf("form is missing the child's label")
+	if !regexp.MustCompile(`data-member-heading[^>]*>\s*Child, 7\s*</h2>`).MatchString(body) {
+		t.Errorf("form is missing the child's heading")
+	}
+}
+
+func TestAdminCreateFamilyLabelsAgeZeroAsInfant(t *testing.T) {
+	server, d := newTestServer(t)
+	cookie := loginAsAdmin(t, server, d)
+
+	req := httptest.NewRequest(http.MethodPost, "/admin/families", strings.NewReader(
+		`{"members": [{}, {"age": 0}]}`))
+	req.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	server.ServeHTTP(rec, req)
+
+	if got, want := rec.Code, http.StatusCreated; got != want {
+		t.Fatalf("status=%d, want=%d, body=%q", got, want, rec.Body.String())
+	}
+
+	var label string
+	if err := d.QueryRow(context.Background(),
+		`SELECT label FROM family_member ORDER BY id LIMIT 1 OFFSET 1`,
+	).Scan(&label); err != nil {
+		t.Fatalf("read child: %v", err)
+	}
+	if got, want := label, "Infant"; got != want {
+		t.Errorf("label=%q, want=%q", got, want)
 	}
 }
