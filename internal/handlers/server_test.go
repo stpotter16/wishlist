@@ -185,3 +185,39 @@ func TestLogoutRequiresLogin(t *testing.T) {
 		t.Errorf("status=%d, want=%d", got, want)
 	}
 }
+
+func TestFaviconServes(t *testing.T) {
+	server, _ := newTestServer(t)
+
+	for _, tt := range []struct {
+		description  string
+		path         string
+		wantStatus   int
+		wantLocation string
+	}{
+		{
+			description: "serves the SVG favicon",
+			path:        "/static/assets/favicon.svg",
+			wantStatus:  http.StatusOK,
+		},
+		{
+			description:  "redirects /favicon.ico to the SVG favicon",
+			path:         "/favicon.ico",
+			wantStatus:   http.StatusMovedPermanently,
+			wantLocation: "/static/assets/favicon.svg",
+		},
+	} {
+		t.Run(tt.description, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, tt.path, nil)
+			rec := httptest.NewRecorder()
+			server.ServeHTTP(rec, req)
+
+			if got, want := rec.Code, tt.wantStatus; got != want {
+				t.Errorf("status=%d, want=%d", got, want)
+			}
+			if got, want := rec.Header().Get("Location"), tt.wantLocation; got != want {
+				t.Errorf("Location=%q, want=%q", got, want)
+			}
+		})
+	}
+}

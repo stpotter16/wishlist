@@ -34,8 +34,7 @@ Wishlist is a web app for an annual adopt-a-family gift drive.
 
 The current Fly deployment is a stakeholder test drive. It runs without Litestream, so the database resets on every deploy. These items must ship before the app goes to production:
 
-1. **Favicon.** `layouts/base.html` links `/static/assets/favicon.svg`, but the file doesn't exist, so every page load 404s on it. Browsers also request `/favicon.ico` on their own.
-2. **Bot defense on `POST /households/{id}/claim`.** It's a public, unauthenticated form that takes contact details, so bots can spam it or claim households.
+1. **Bot defense on `POST /households/{id}/claim`.** It's a public, unauthenticated form that takes contact details, so bots can spam it or claim households.
    - Overlaps with the [claim gating decision](#open-decisions-resolve-before-launch). Settle the approach with the user before building, since options like a CAPTCHA would also need Content Security Policy changes.
    - Solution space (explored 2026-10-23, nothing chosen). The options stack, so a combination is likely:
      - **Baseline that already exists.** The claim form posts JSON through `fetch`, so generic form-spam bots that submit HTML forms never reach the handler. `ErrEmailAlreadyClaimed` limits each email to one household, but fake emails defeat it. Admins can release bogus claims from the admin page.
@@ -48,7 +47,7 @@ The current Fly deployment is a stakeholder test drive. It runs without Litestre
      - **Shared access code.** Admins share a code through the drive's own channels, and the claim form requires it. This blocks bots and strangers entirely, but a leaked code drops the protection, and it adds a step for givers. This option is the same as a [claim gating](#open-decisions-resolve-before-launch) option.
      - **Admin approval or email confirmation.** Claims start as pending until an admin approves or the giver confirms by email. Either is the strongest protection, but needs a pending claim state and a migration. See [emailing giver links](#open-decisions-resolve-before-launch).
      - **Admin alerting.** Email admins on each claim, or flag bursts, so they can release bogus claims quickly. This depends on an email provider.
-3. **Turn Litestream back on.** Create a bucket and set the `LITESTREAM_BUCKET`, `LITESTREAM_ENDPOINT`, `LITESTREAM_ACCESS_KEY_ID`, and `LITESTREAM_SECRET_ACCESS_KEY` secrets, so production data survives deploys and machine restarts. Without them, `docker-entrypoint` starts the app without replication.
+2. **Turn Litestream back on.** Create a bucket and set the `LITESTREAM_BUCKET`, `LITESTREAM_ENDPOINT`, `LITESTREAM_ACCESS_KEY_ID`, and `LITESTREAM_SECRET_ACCESS_KEY` secrets, so production data survives deploys and machine restarts. Without them, `docker-entrypoint` starts the app without replication.
 
 ## Roles
 

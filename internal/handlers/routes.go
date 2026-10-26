@@ -17,6 +17,7 @@ func addRoutes(
 ) {
 	// Static
 	mux.Handle("GET /static/", http.StripPrefix("/static/", serveStaticFiles()))
+	mux.Handle("GET /favicon.ico", http.RedirectHandler("/static/assets/favicon.svg", http.StatusMovedPermanently))
 
 	// Views
 	mux.HandleFunc("GET /{$}", householdsGet(store))
