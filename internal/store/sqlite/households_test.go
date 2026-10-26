@@ -331,7 +331,7 @@ func TestListHouseholds(t *testing.T) {
 
 	want := []types.HouseholdSummary{
 		{ID: 1, Kind: types.HouseholdKindFamily, MemberLabels: []string{"Mom", "Child, 7"}, IsClaimed: false},
-		{ID: 2, Kind: types.HouseholdKindSingle, MemberLabels: []string{"Woman"}, IsClaimed: true},
+		{ID: 2, Kind: types.HouseholdKindSingle, MemberLabels: []string{"Woman"}, IsClaimed: true, GiverName: "Giver", GiverEmail: "giver@example.com"},
 		{ID: 3, Kind: types.HouseholdKindFamily, MemberLabels: nil, IsClaimed: false},
 	}
 	if got := households; !reflect.DeepEqual(got, want) {

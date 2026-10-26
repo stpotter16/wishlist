@@ -381,17 +381,20 @@ func insertWishlistItems(ctx context.Context, tx *sql.Tx, memberID int64, kind s
 }
 
 // ListHouseholds returns every household, including claimed households and households
-// with no members, ordered by household ID.
+// with no members, ordered by household ID. Claimed households include the giver's
+// name and email.
 func (s Store) ListHouseholds(ctx context.Context) ([]types.HouseholdSummary, error) {
 	rows, err := s.db.Query(ctx, `
 	SELECT
 		household.id,
 		household.kind,
 		household_member.label,
-		EXISTS (SELECT 1 FROM claim WHERE claim.household_id = household.id)
+		claim.giver_name,
+		claim.giver_email
 	FROM
 		household
 	LEFT JOIN household_member ON household_member.household_id = household.id
+	LEFT JOIN claim ON claim.household_id = household.id
 	ORDER BY
 		household.id,
 		household_member.id
@@ -406,15 +409,18 @@ func (s Store) ListHouseholds(ctx context.Context) ([]types.HouseholdSummary, er
 		var householdID int
 		var kind string
 		var memberLabel sql.NullString
-		var isClaimed int
-		if err := rows.Scan(&householdID, &kind, &memberLabel, &isClaimed); err != nil {
+		var giverName sql.NullString
+		var giverEmail sql.NullString
+		if err := rows.Scan(&householdID, &kind, &memberLabel, &giverName, &giverEmail); err != nil {
 			return nil, err
 		}
 		if len(households) == 0 || households[len(households)-1].ID != householdID {
 			households = append(households, types.HouseholdSummary{
-				ID:        householdID,
-				Kind:      types.HouseholdKind(kind),
-				IsClaimed: isClaimed != 0,
+				ID:         householdID,
+				Kind:       types.HouseholdKind(kind),
+				IsClaimed:  giverName.Valid,
+				GiverName:  giverName.String,
+				GiverEmail: giverEmail.String,
 			})
 		}
 		if memberLabel.Valid {

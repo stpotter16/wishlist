@@ -33,7 +33,7 @@ func TestAdminListsAllHouseholdsWithClaimStatus(t *testing.T) {
 		household_id, giver_name, giver_email, giver_phone, access_token_hash,
 		created_time
 	) VALUES (
-		2, 'Giver', 'giver@example.com', '555-0100', 'dummy-hash',
+		2, 'Pat Jones', 'giver@example.com', '555-0100', 'dummy-hash',
 		'2026-01-01T00:00:00Z'
 	);
 	`); err != nil {
@@ -60,6 +60,11 @@ func TestAdminListsAllHouseholdsWithClaimStatus(t *testing.T) {
 	}
 	if !strings.Contains(body, "Unclaimed") {
 		t.Errorf("body is missing unclaimed status")
+	}
+	// Collapse whitespace like a browser does, so template formatting doesn't
+	// matter.
+	if !strings.Contains(strings.Join(strings.Fields(body), " "), "Claimed by Pat Jones - giver@example.com") {
+		t.Errorf("body is missing the claimed household's giver")
 	}
 }
 

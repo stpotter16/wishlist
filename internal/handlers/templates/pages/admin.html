@@ -18,9 +18,15 @@
             class="block rounded-xl bg-surface p-5 shadow-sm hover:outline-2 hover:outline-accent focus-visible:outline-2 focus-visible:outline-accent"
           >
             <div class="flex items-center justify-between gap-4">
-              <div>
+              <div class="min-w-0">
                 <p class="text-lg font-semibold">Household {{ .ID }}</p>
                 <p class="text-sm text-muted">{{ .Kind.Label }}</p>
+                {{ if .IsClaimed }}
+                  <p class="text-sm wrap-break-word text-muted">
+                    Claimed by {{ .GiverName }} -
+                    {{ .GiverEmail }}
+                  </p>
+                {{ end }}
               </div>
               {{ if .IsClaimed }}
                 <span

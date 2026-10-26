@@ -82,7 +82,7 @@ The current Fly deployment is a stakeholder test drive. It runs without Litestre
 
 Stakeholders decided on 2026-10-25 to keep claiming open, because codes, approvals, and similar barriers would be too hard for givers to navigate.
 
-- Admins guard against bogus claims after the fact. The admin household page shows the giver's contact details, and admins release any claim from a giver they don't recognize.
+- Admins guard against bogus claims after the fact. The admin listing shows each claimed household's giver name and email, since bots' fake emails are easy to spot, the admin household page shows the giver's contact details, and admins release any claim from a giver they don't recognize.
 - `POST /households/{id}/claim` is rate-limited to 10 attempts per client IP per hour (`middleware.NewRateLimitMiddleware`).
   - Every attempt counts, including ones that fail, so bots can't probe for free.
   - The limit leaves room for several givers claiming from one shared network, such as a church's Wi-Fi.
@@ -108,7 +108,7 @@ Stakeholders decided on 2026-10-25 to keep claiming open, because codes, approva
   - `GET /claims/{token}`: the giver's private view of their household.
 - Admin routes (session required):
   - `GET /login`, `POST /login`, `POST /logout`.
-  - `GET /admin`: every household with its claim status.
+  - `GET /admin`: every household with its claim status and, if claimed, the giver's name and email.
   - `GET /admin/households/new`: one form for transcribing a household's intake sheets, with a section per member.
   - `POST /admin/households`: creates a household with all its members and wishlist items in one transaction. Responds with the new household's ID.
   - `GET /admin/households/{id}`: shows a household's members, its claim status, and the giver's contact details if claimed. It hosts the edit link and the release, new-link, and delete actions.

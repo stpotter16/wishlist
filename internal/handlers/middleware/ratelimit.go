@@ -37,7 +37,7 @@ func NewRateLimitMiddleware(params RateLimitParams) func(http.Handler) http.Hand
 			ip := clientIP(r)
 
 			mu.Lock()
-			// Drop expired windows so the map can't grow without bound.
+			// Drop expired windows to keep the map small.
 			for key, window := range windows {
 				if now.Sub(window.start) >= params.Window {
 					delete(windows, key)
