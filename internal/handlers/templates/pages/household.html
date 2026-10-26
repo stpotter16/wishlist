@@ -1,5 +1,11 @@
 {{ define "title" }}Household {{ .Household.ID }}{{ end }}
 {{ define "script-tags" }}
+  <script
+    src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+    async
+    defer
+    nonce="{{ .CspNonce }}"
+  ></script>
   <script type="module" nonce="{{ .CspNonce }}">
     const form = document.getElementById("claim");
 
@@ -30,12 +36,27 @@
       document.getElementById("error-message").classList.add("hidden");
     });
 
+    function showError(message) {
+      document.getElementById("error-text").textContent = message;
+      document.getElementById("error-message").classList.remove("hidden");
+    }
+
     form.addEventListener("submit", (evt) => {
       evt.preventDefault();
+      // The Turnstile widget adds this input once it has checked the browser.
+      const turnstileToken =
+        form.querySelector('[name="cf-turnstile-response"]')?.value ?? "";
+      if (turnstileToken === "") {
+        showError(
+          "Please wait a moment for the bot check to finish, then try again.",
+        );
+        return;
+      }
       const giver = {
         name: document.getElementById("giver-name").value,
         email: document.getElementById("giver-email").value,
         phone: document.getElementById("giver-phone").value,
+        turnstileToken,
       };
       setFormState(false);
       claimHousehold(form.dataset.householdId, giver)
@@ -44,8 +65,9 @@
         })
         .catch((error) => {
           setFormState(true);
-          document.getElementById("error-text").textContent = error;
-          document.getElementById("error-message").classList.remove("hidden");
+          // Each token works only once, so get a fresh one for the retry.
+          window.turnstile?.reset();
+          showError(error);
         });
     });
   </script>
@@ -120,6 +142,11 @@
             class="w-full rounded-lg border border-border bg-page px-3 py-2 text-sm focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50"
           />
         </label>
+        <div
+          class="cf-turnstile"
+          data-sitekey="{{ .TurnstileSiteKey }}"
+          data-size="flexible"
+        ></div>
         <button
           type="submit"
           class="inline-flex items-center justify-center rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50"

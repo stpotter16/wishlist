@@ -15,6 +15,8 @@ func addRoutes(
 	store store.Store,
 	sessionManager sessions.SessionManger,
 	authenticator authentication.Authenticator,
+	turnstileSiteKey string,
+	humanVerifier HumanVerifier,
 	now func() time.Time,
 ) {
 	// Static
@@ -23,7 +25,7 @@ func addRoutes(
 
 	// Views
 	mux.HandleFunc("GET /{$}", householdsGet(store))
-	mux.HandleFunc("GET /households/{id}", householdGet(store))
+	mux.HandleFunc("GET /households/{id}", householdGet(store, turnstileSiteKey))
 	mux.HandleFunc("GET /claims/{token}", claimGet(store))
 	mux.HandleFunc("GET /login", loginGet())
 
@@ -43,7 +45,7 @@ func addRoutes(
 		Window: time.Hour,
 		Now:    now,
 	})
-	mux.Handle("POST /households/{id}/claim", claimRateLimit(householdClaimPost(store)))
+	mux.Handle("POST /households/{id}/claim", claimRateLimit(householdClaimPost(store, humanVerifier)))
 
 	// Auth
 	mux.HandleFunc("POST /login", loginPost(authenticator, sessionManager))

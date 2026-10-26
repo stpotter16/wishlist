@@ -49,7 +49,7 @@ func householdsGet(s store.Store) http.HandlerFunc {
 	}
 }
 
-func householdGet(s store.Store) http.HandlerFunc {
+func householdGet(s store.Store, turnstileSiteKey string) http.HandlerFunc {
 	t := template.Must(
 		template.New("base.html").
 			ParseFS(
@@ -85,10 +85,12 @@ func householdGet(s store.Store) http.HandlerFunc {
 
 		props := struct {
 			viewProps
-			Household types.Household
+			Household        types.Household
+			TurnstileSiteKey string
 		}{
-			viewProps: viewProps{CspNonce: nonce},
-			Household: household,
+			viewProps:        viewProps{CspNonce: nonce},
+			Household:        household,
+			TurnstileSiteKey: turnstileSiteKey,
 		}
 
 		if err := t.Execute(w, props); err != nil {

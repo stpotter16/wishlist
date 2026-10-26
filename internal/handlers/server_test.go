@@ -29,6 +29,26 @@ func newTestServer(t *testing.T) (http.Handler, db.DB) {
 // newTestServerWithClock is newTestServer with a clock the test controls.
 func newTestServerWithClock(t *testing.T, now func() time.Time) (http.Handler, db.DB) {
 	t.Helper()
+	return newTestServerWithVerifier(t, now, &fakeHumanVerifier{isHuman: true})
+}
+
+// fakeHumanVerifier stands in for Cloudflare Turnstile, so tests never call
+// Cloudflare. It records the last token it was asked to check.
+type fakeHumanVerifier struct {
+	isHuman  bool
+	err      error
+	gotToken string
+}
+
+func (f *fakeHumanVerifier) Verify(ctx context.Context, token string) (bool, error) {
+	f.gotToken = token
+	return f.isHuman, f.err
+}
+
+// newTestServerWithVerifier is newTestServerWithClock with a bot check the
+// test controls.
+func newTestServerWithVerifier(t *testing.T, now func() time.Time, verifier handlers.HumanVerifier) (http.Handler, db.DB) {
+	t.Helper()
 
 	d, err := db.New(t.TempDir())
 	if err != nil {
@@ -50,7 +70,7 @@ func newTestServerWithClock(t *testing.T, now func() time.Time) (http.Handler, d
 		t.Fatalf("sessions.New: %v", err)
 	}
 
-	return handlers.NewServer(store, sm, authentication.New(store), now), d
+	return handlers.NewServer(store, sm, authentication.New(store), "dummy-site-key", verifier, now), d
 }
 
 // loginAsAdmin seeds an admin and logs in through POST /login, returning the

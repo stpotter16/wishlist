@@ -3,6 +3,7 @@ package handlers_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -265,6 +266,72 @@ func TestClaimRateLimitPerNetwork(t *testing.T) {
 			rec := claim(tt.requestIP)
 			if got, want := rec.Code, tt.statusExpected; got != want {
 				t.Errorf("status=%d, want=%d, body=%q", got, want, rec.Body.String())
+			}
+		})
+	}
+}
+
+func TestClaimHouseholdRequiresBotCheck(t *testing.T) {
+	for _, tt := range []struct {
+		explanation      string
+		verifier         *fakeHumanVerifier
+		statusWant       int
+		claimCreatedWant bool
+	}{
+		{
+			"giver who passes the bot check claims the household",
+			&fakeHumanVerifier{isHuman: true},
+			http.StatusCreated,
+			true,
+		},
+		{
+			"giver who fails the bot check is forbidden",
+			&fakeHumanVerifier{isHuman: false},
+			http.StatusForbidden,
+			false,
+		},
+		{
+			"claim is refused when the bot check is unavailable",
+			&fakeHumanVerifier{err: errors.New("dummy outage")},
+			http.StatusServiceUnavailable,
+			false,
+		},
+	} {
+		t.Run(tt.explanation, func(t *testing.T) {
+			server, d := newTestServerWithVerifier(t, func() time.Time {
+				return time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+			}, tt.verifier)
+
+			if _, err := d.Exec(context.Background(), `
+			INSERT INTO household (id, kind, created_time, last_modified_time) VALUES
+				(1, 'family', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+			INSERT INTO household_member
+				(household_id, first_name, label, created_time, last_modified_time)
+			VALUES
+				(1, 'Maria', 'Mom', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+			`); err != nil {
+				t.Fatalf("seed: %v", err)
+			}
+
+			req := httptest.NewRequest(http.MethodPost, "/households/1/claim", strings.NewReader(
+				`{"name": "Giver", "email": "giver@example.com", "phone": "555-0100", "turnstileToken": "dummy-token"}`))
+			rec := httptest.NewRecorder()
+			server.ServeHTTP(rec, req)
+
+			if got, want := rec.Code, tt.statusWant; got != want {
+				t.Errorf("status=%d, want=%d, body=%q", got, want, rec.Body.String())
+			}
+			if got, want := tt.verifier.gotToken, "dummy-token"; got != want {
+				t.Errorf("verified token=%q, want=%q", got, want)
+			}
+
+			var claims int
+			if err := d.QueryRow(context.Background(),
+				`SELECT COUNT(*) FROM claim WHERE household_id = 1`).Scan(&claims); err != nil {
+				t.Fatalf("count claims: %v", err)
+			}
+			if got, want := claims == 1, tt.claimCreatedWant; got != want {
+				t.Errorf("claim created=%v, want=%v", got, want)
 			}
 		})
 	}

@@ -13,7 +13,7 @@ FROM litestream/litestream:0.3.13 AS litestream
 
 FROM alpine:3.15
 
-RUN apk add --no-cache bash tzdata
+RUN apk add --no-cache bash ca-certificates tzdata
 
 ARG TZ
 RUN if [[ -n "${TZ}" ]]; then \

@@ -16,6 +16,7 @@ import (
 	"github.com/stpotter16/wishlist/internal/handlers/sessions"
 	"github.com/stpotter16/wishlist/internal/store/db"
 	"github.com/stpotter16/wishlist/internal/store/sqlite"
+	"github.com/stpotter16/wishlist/internal/turnstile"
 )
 
 func run(
@@ -53,7 +54,17 @@ func run(
 
 	authenticator := authentication.New(store)
 
-	handler := handlers.NewServer(store, sessionManager, authenticator, time.Now)
+	turnstileSiteKey := getenv("WISHLIST_TURNSTILE_SITE_KEY")
+	if turnstileSiteKey == "" {
+		return errors.New("WISHLIST_TURNSTILE_SITE_KEY environment variable not set")
+	}
+	turnstileSecretKey := getenv("WISHLIST_TURNSTILE_SECRET_KEY")
+	if turnstileSecretKey == "" {
+		return errors.New("WISHLIST_TURNSTILE_SECRET_KEY environment variable not set")
+	}
+	humanVerifier := turnstile.New(turnstileSecretKey, turnstile.SiteverifyURL)
+
+	handler := handlers.NewServer(store, sessionManager, authenticator, turnstileSiteKey, humanVerifier, time.Now)
 	port := getenv("PORT")
 	if port == "" {
 		port = "8080"

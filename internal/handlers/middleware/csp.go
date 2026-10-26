@@ -17,6 +17,8 @@ type contextKey struct {
 
 const CSP_KEY = "csp"
 
+const turnstileOrigin = "https://challenges.cloudflare.com"
+
 func CspMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		nonce, err := generateNonce()
@@ -36,6 +38,10 @@ func CspMiddleware(next http.Handler) http.Handler {
 				name: "script-src",
 				values: []string{
 					"'nonce-" + nonce + "'",
+					// Cloudflare Turnstile guards the claim form. Its loader
+					// carries the nonce, but Cloudflare's docs also allow
+					// the host for the scripts it loads.
+					turnstileOrigin,
 				},
 			},
 			{

@@ -14,10 +14,12 @@ func NewServer(
 	store store.Store,
 	sessionManager sessions.SessionManger,
 	authenticator authentication.Authenticator,
+	turnstileSiteKey string,
+	humanVerifier HumanVerifier,
 	now func() time.Time,
 ) http.Handler {
 	mux := http.NewServeMux()
-	addRoutes(mux, store, sessionManager, authenticator, now)
+	addRoutes(mux, store, sessionManager, authenticator, turnstileSiteKey, humanVerifier, now)
 	// CrossOriginProtection rejects cross-origin, state-changing browser
 	// requests, which protects every POST, PUT, and DELETE from CSRF. It relies
 	// on the browser sending Sec-Fetch-Site or Origin, and lets requests with

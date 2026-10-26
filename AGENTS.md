@@ -29,9 +29,10 @@ Wishlist is a web app for an annual adopt-a-family gift drive.
 
 ## Must do before launch
 
-The current Fly deployment is a stakeholder test drive. It runs without Litestream, so the database resets on every deploy. This item must ship before the app goes to production:
+The current Fly deployment is a stakeholder test drive. It runs without Litestream, so the database resets on every deploy. These items must ship before the app goes to production:
 
 1. **Turn Litestream back on.** Create a bucket and set the `LITESTREAM_BUCKET`, `LITESTREAM_ENDPOINT`, `LITESTREAM_ACCESS_KEY_ID`, and `LITESTREAM_SECRET_ACCESS_KEY` secrets, so production data survives deploys and machine restarts. Without them, `docker-entrypoint` starts the app without replication.
+2. **Create the Turnstile widget.** In the Cloudflare dashboard, create a widget in Managed mode for the app's hostname, then set the `WISHLIST_TURNSTILE_SITE_KEY` and `WISHLIST_TURNSTILE_SECRET_KEY` secrets. The server refuses to start without them. Add the custom domain to the widget's hostnames if one is set up later.
 
 ## Roles
 
@@ -83,13 +84,19 @@ The current Fly deployment is a stakeholder test drive. It runs without Litestre
 Stakeholders decided on 2026-10-25 to keep claiming open, because codes, approvals, and similar barriers would be too hard for givers to navigate.
 
 - Admins guard against bogus claims after the fact. The admin listing shows each claimed household's giver name and email, since bots' fake emails are easy to spot, the admin household page shows the giver's contact details, and admins release any claim from a giver they don't recognize.
+- Claims require a Cloudflare Turnstile check in Managed mode, which the user chose on 2026-10-25 because it stops bots that post straight to the claim endpoint. Most givers never see a challenge, so it stays within the no-barriers decision above.
+  - The claim form renders the widget, and the page script sends its token as `turnstileToken`. The server checks it with Cloudflare's siteverify API (`internal/turnstile`) before creating the claim.
+  - Tokens are single-use, so the form resets the widget after any failed claim.
+  - Verification fails closed. If Cloudflare is unreachable or rejects the secret key, the claim gets `503` rather than skipping the check.
+  - Handlers depend on the `HumanVerifier` interface, and tests pass a fake, so tests never call Cloudflare.
+  - A honeypot field was considered and rejected. The form already submits through JavaScript, which stops the non-JS bots a honeypot catches, and bots that post JSON directly skip hidden fields.
 - `POST /households/{id}/claim` is rate-limited to 10 attempts per client IP per hour (`middleware.NewRateLimitMiddleware`).
   - Every attempt counts, including ones that fail, so bots can't probe for free.
   - The limit leaves room for several givers claiming from one shared network, such as a church's Wi-Fi.
   - The client IP comes from Fly's `Fly-Client-IP` header, not `RemoteAddr`, which is Fly's proxy. Requests without the header, such as local development, use `RemoteAddr`.
   - Counts live in memory and reset on restart. That works only because the app runs on exactly one machine (`--ha=false`).
   - Rejected attempts get `429 Too Many Requests` with a `Retry-After` header.
-- Do not add access codes, CAPTCHAs, or approval steps without the user's explicit decision.
+- Do not add access codes, other CAPTCHAs, or approval steps without the user's explicit decision.
 
 ## Lifecycle
 
@@ -104,7 +111,7 @@ Stakeholders decided on 2026-10-25 to keep claiming open, because codes, approva
 - Public routes (givers, no login):
   - `GET /`: unclaimed households, each shown as "Household N" with its kind and member labels.
   - `GET /households/{id}`: a household's members, sizes, preferences, needs, and wishes. Returns 404 once the household is claimed.
-  - `POST /households/{id}/claim`: takes the giver's name, email, and phone; responds with the giver's private link. Returns 409 if the household is already claimed or the email has already claimed a household, and 429 past the [rate limit](#claim-gating).
+  - `POST /households/{id}/claim`: takes the giver's name, email, phone, and Turnstile token; responds with the giver's private link. Returns 403 if the [Turnstile check](#claim-gating) fails, 503 if Cloudflare can't be reached, 409 if the household is already claimed or the email has already claimed a household, and 429 past the [rate limit](#claim-gating).
   - `GET /claims/{token}`: the giver's private view of their household.
 - Admin routes (session required):
   - `GET /login`, `POST /login`, `POST /logout`.
@@ -143,6 +150,7 @@ Stakeholders decided on 2026-10-25 to keep claiming open, because codes, approva
 - The server requires these environment variables:
   - `WISHLIST_DB_PATH`: directory that holds `wishlist.sqlite`.
   - `WISHLIST_SESSION_ENV_KEY`: session signing key. Generate one with `make secrets/hmac`.
+  - `WISHLIST_TURNSTILE_SITE_KEY` and `WISHLIST_TURNSTILE_SECRET_KEY`: the Cloudflare Turnstile widget's keys. `.env.example` uses Cloudflare's test keys, which always pass, so local development needs no Cloudflare account.
   - `PORT` (optional): listen port, defaults to `8080`.
 - Copy `.env.example` to `.env`, fill it in, and `source .env` before running the server.
 - Production also reads `LITESTREAM_BUCKET`, `LITESTREAM_ENDPOINT`, `LITESTREAM_ACCESS_KEY_ID`, and `LITESTREAM_SECRET_ACCESS_KEY`. When `LITESTREAM_BUCKET` is unset, `docker-entrypoint` starts the app without replication.
@@ -202,6 +210,7 @@ Stakeholders decided on 2026-10-25 to keep claiming open, because codes, approva
 ## JavaScript
 
 - The Content Security Policy only allows scripts that carry the per-request nonce. Every `<script>` tag needs `nonce="{{ .CspNonce }}"`.
+  - The only outside origin it allows is `https://challenges.cloudflare.com`, for Turnstile.
 - Do not use `alert()` or `confirm()`.
 - Do not embed Go template conditionals inside JavaScript. Instead, render a data attribute or hidden input in HTML and read it from JS.
 

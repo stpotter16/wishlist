@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"html/template"
@@ -14,7 +15,14 @@ import (
 	"github.com/stpotter16/wishlist/internal/types"
 )
 
-func householdClaimPost(s store.Store) http.HandlerFunc {
+// HumanVerifier checks the token a bot-defense widget gave the giver's
+// browser. It returns an error only when it can't reach a verdict, so callers
+// can tell an outage from a rejected token.
+type HumanVerifier interface {
+	Verify(ctx context.Context, token string) (bool, error)
+}
+
+func householdClaimPost(s store.Store, verifier HumanVerifier) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		householdID, err := strconv.Atoi(r.PathValue("id"))
 		if err != nil {
@@ -22,9 +30,22 @@ func householdClaimPost(s store.Store) http.HandlerFunc {
 			return
 		}
 
-		giver, err := parse.ParseClaimPost(w, r)
+		giver, turnstileToken, err := parse.ParseClaimPost(w, r)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		// Fail closed: if Cloudflare is unreachable, claiming stops rather
+		// than leaving the endpoint open to bots.
+		isHuman, err := verifier.Verify(r.Context(), turnstileToken)
+		if err != nil {
+			log.Printf("householdClaimPost: failed to verify turnstile token: %v", err)
+			http.Error(w, "We couldn't run the bot check right now. Please try again in a few minutes.", http.StatusServiceUnavailable)
+			return
+		}
+		if !isHuman {
+			http.Error(w, "We couldn't confirm you're not a bot. Please try again.", http.StatusForbidden)
 			return
 		}
 
