@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/stpotter16/wishlist/internal/handlers/authentication"
 	"github.com/stpotter16/wishlist/internal/handlers/middleware"
@@ -14,6 +15,7 @@ func addRoutes(
 	store store.Store,
 	sessionManager sessions.SessionManger,
 	authenticator authentication.Authenticator,
+	now func() time.Time,
 ) {
 	// Static
 	mux.Handle("GET /static/", http.StripPrefix("/static/", serveStaticFiles()))
@@ -33,7 +35,15 @@ func addRoutes(
 	mux.Handle("GET /admin/households/{id}/edit", viewAuthRequired(adminEditHouseholdGet(store)))
 
 	// Public API endpoints
-	mux.HandleFunc("POST /households/{id}/claim", householdClaimPost(store))
+	// Claiming needs no login, so limit how many claims one network can
+	// attempt. Shared networks, like a church's Wi-Fi, still need room for
+	// several givers.
+	claimRateLimit := middleware.NewRateLimitMiddleware(middleware.RateLimitParams{
+		Limit:  10,
+		Window: time.Hour,
+		Now:    now,
+	})
+	mux.Handle("POST /households/{id}/claim", claimRateLimit(householdClaimPost(store)))
 
 	// Auth
 	mux.HandleFunc("POST /login", loginPost(authenticator, sessionManager))

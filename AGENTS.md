@@ -7,19 +7,16 @@ Wishlist is a web app for an annual adopt-a-family gift drive.
 ## Open decisions: resolve before launch
 
 > [!IMPORTANT]
-> Two product decisions are still open, and stakeholders are test-driving the app to inform them. Do not pick an answer or build either feature without the user's explicit decision. Whenever a task touches claims, giver links, or launch readiness, remind the user that these decisions are still open.
+> One product decision is still open, and stakeholders are test-driving the app to inform it. Do not pick an answer or build the feature without the user's explicit decision. Whenever a task touches claims, giver links, or launch readiness, remind the user that this decision is still open.
 
-1. **Claim gating.** Anyone with the URL can browse and claim unclaimed households, so one person could claim every household with fake emails.
-   - Options so far: ship ungated, require a shared access code, have admins approve claims, or rate-limit claims.
-   - Affects `POST /households/{id}/claim`, the public listing, and possibly the claim form.
-2. **Emailing giver links.** The app shows a giver's private link only on screen after claiming. A giver who loses it must ask an admin to issue a new one.
+1. **Emailing giver links.** The app shows a giver's private link only on screen after claiming. A giver who loses it must ask an admin to issue a new one.
    - Open questions: which email provider, whether to send the link automatically on claim, and whether admins' "Issue new link" also sends it.
    - The database stores only token hashes, so any re-send must issue a new token, which invalidates the old link.
    - Solution space (explored 2026-10-23, nothing chosen):
      - **When to send.** Choose one:
        - Send on claim and still show the link on screen. Simplest, and gives givers a copy they can find later, but adds no abuse protection.
        - Send on claim and show the link only in the email. A claimer must control a real mailbox to see the household, which deters fake-email claims. Disposable mailboxes still get through, and a giver whose email bounces or lands in spam is stuck until an admin re-issues the link.
-       - Hold the claim as pending until the giver clicks an emailed confirmation link, then release it automatically if no one confirms within a set window. This is the strongest email-based gate, but it needs a pending claim state, an expiry job or lazy expiry check, and a schema migration. It overlaps with [claim gating](#open-decisions-resolve-before-launch) and [bot defense](#must-do-before-launch).
+       - Hold the claim as pending until the giver clicks an emailed confirmation link, then release it automatically if no one confirms within a set window. This is the strongest email-based gate, but it needs a pending claim state, an expiry job or lazy expiry check, and a schema migration. It would add a barrier for givers, which the [claim gating decision](#claim-gating) chose to avoid.
      - **Admin re-send.** "Issue new link" could email the new link directly, show it for the admin to copy, or both. Emailing it directly keeps the token off the admin's screen and clipboard.
      - **Provider.** Volume is tiny (one email per claim, at most a few hundred per season), so any free tier works. Candidates: Postmark (strong deliverability, transactional only), Resend (simple HTTP API), AWS SES (cheapest, more setup), or plain SMTP through an existing mailbox. An HTTP API needs no new Go dependency, since `net/http` can call it.
      - **Deliverability.** Sending from a custom domain needs SPF and DKIM records. The app currently runs on a `fly.dev` hostname, so a custom domain is likely a prerequisite.
@@ -32,22 +29,9 @@ Wishlist is a web app for an annual adopt-a-family gift drive.
 
 ## Must do before launch
 
-The current Fly deployment is a stakeholder test drive. It runs without Litestream, so the database resets on every deploy. These items must ship before the app goes to production:
+The current Fly deployment is a stakeholder test drive. It runs without Litestream, so the database resets on every deploy. This item must ship before the app goes to production:
 
-1. **Bot defense on `POST /households/{id}/claim`.** It's a public, unauthenticated form that takes contact details, so bots can spam it or claim households.
-   - Overlaps with the [claim gating decision](#open-decisions-resolve-before-launch). Settle the approach with the user before building, since options like a CAPTCHA would also need Content Security Policy changes.
-   - Solution space (explored 2026-10-23, nothing chosen). The options stack, so a combination is likely:
-     - **Baseline that already exists.** The claim form posts JSON through `fetch`, so generic form-spam bots that submit HTML forms never reach the handler. `ErrEmailAlreadyClaimed` limits each email to one household, but fake emails defeat it. Admins can release bogus claims from the admin page.
-     - **Honeypot field and minimum fill time.** Add a hidden field that humans leave empty, plus a render timestamp, and reject submissions that fill the honeypot or arrive too fast. This needs no dependency, no CSP change, and no friction for givers, but stops only unsophisticated bots.
-     - **Per-IP rate limiting.** Limit claims per client IP, for example a few per hour. Read the IP from Fly's `Fly-Client-IP` header, not `RemoteAddr`, which is Fly's proxy. An in-memory limiter is fine because the app runs on exactly one machine (`--ha=false`). Hand-roll it, or add `golang.org/x/time/rate`. It slows bulk claiming from one host but not from many IPs.
-     - **Cloudflare Turnstile (or hCaptcha).** Turnstile is free, usually invisible, and avoids Google tracking, unlike reCAPTCHA.
-       - It needs a client widget, a server-side verification call to Cloudflare with a secret key, and a new Fly secret.
-       - CSP: `script-src` must add `https://challenges.cloudflare.com`. The policy has no `default-src` or `frame-src`, so its iframe already loads. Adding either directive later would require allowing the same origin.
-       - It adds a third-party dependency on the public claim path, and tests need a way to skip verification (for example, an empty secret skips it).
-     - **Shared access code.** Admins share a code through the drive's own channels, and the claim form requires it. This blocks bots and strangers entirely, but a leaked code drops the protection, and it adds a step for givers. This option is the same as a [claim gating](#open-decisions-resolve-before-launch) option.
-     - **Admin approval or email confirmation.** Claims start as pending until an admin approves or the giver confirms by email. Either is the strongest protection, but needs a pending claim state and a migration. See [emailing giver links](#open-decisions-resolve-before-launch).
-     - **Admin alerting.** Email admins on each claim, or flag bursts, so they can release bogus claims quickly. This depends on an email provider.
-2. **Turn Litestream back on.** Create a bucket and set the `LITESTREAM_BUCKET`, `LITESTREAM_ENDPOINT`, `LITESTREAM_ACCESS_KEY_ID`, and `LITESTREAM_SECRET_ACCESS_KEY` secrets, so production data survives deploys and machine restarts. Without them, `docker-entrypoint` starts the app without replication.
+1. **Turn Litestream back on.** Create a bucket and set the `LITESTREAM_BUCKET`, `LITESTREAM_ENDPOINT`, `LITESTREAM_ACCESS_KEY_ID`, and `LITESTREAM_SECRET_ACCESS_KEY` secrets, so production data survives deploys and machine restarts. Without them, `docker-entrypoint` starts the app without replication.
 
 ## Roles
 
@@ -77,7 +61,7 @@ The current Fly deployment is a stakeholder test drive. It runs without Litestre
   - The head of the household's first name and last initial, shown as "Maria G.". The server accepts exactly one letter for the initial.
   - Each child's first name only.
   - Names appear on the household's detail pages: the public household page, the giver's claim page, and the admin page. Listings show only member labels.
-  - The public household page needs no login, so anyone with the URL can see these names before claiming. This ties into the [claim gating decision](#open-decisions-resolve-before-launch).
+  - The public household page needs no login, so anyone with the URL can see these names before claiming. See [Claim gating](#claim-gating).
 
 ## Claims
 
@@ -87,13 +71,25 @@ The current Fly deployment is a stakeholder test drive. It runs without Litestre
   - Only admins can read giver contact details.
 - Claimed households disappear from the public household listing.
 - Only admins can release a claim. Givers cannot unclaim a household.
-- Browsing and claiming unclaimed households requires no login or access code.
-  - Whether to gate claiming is an [open decision](#open-decisions-resolve-before-launch).
+- Browsing and claiming unclaimed households requires no login or access code. See [Claim gating](#claim-gating).
 - Givers return to their claimed household through a private link that carries a random token.
   - Whether to email the link is an [open decision](#open-decisions-resolve-before-launch).
   - The database stores only the SHA-256 hash of each token (`internal/auth/token.go`).
   - Never log a token. The request logger redacts paths under `/claims/`.
   - Pages under `/claims/` send `Cache-Control: no-store` and `Referrer-Policy: no-referrer`.
+
+## Claim gating
+
+Stakeholders decided on 2026-10-25 to keep claiming open, because codes, approvals, and similar barriers would be too hard for givers to navigate.
+
+- Admins guard against bogus claims after the fact. The admin household page shows the giver's contact details, and admins release any claim from a giver they don't recognize.
+- `POST /households/{id}/claim` is rate-limited to 10 attempts per client IP per hour (`middleware.NewRateLimitMiddleware`).
+  - Every attempt counts, including ones that fail, so bots can't probe for free.
+  - The limit leaves room for several givers claiming from one shared network, such as a church's Wi-Fi.
+  - The client IP comes from Fly's `Fly-Client-IP` header, not `RemoteAddr`, which is Fly's proxy. Requests without the header, such as local development, use `RemoteAddr`.
+  - Counts live in memory and reset on restart. That works only because the app runs on exactly one machine (`--ha=false`).
+  - Rejected attempts get `429 Too Many Requests` with a `Retry-After` header.
+- Do not add access codes, CAPTCHAs, or approval steps without the user's explicit decision.
 
 ## Lifecycle
 
@@ -108,7 +104,7 @@ The current Fly deployment is a stakeholder test drive. It runs without Litestre
 - Public routes (givers, no login):
   - `GET /`: unclaimed households, each shown as "Household N" with its kind and member labels.
   - `GET /households/{id}`: a household's members, sizes, preferences, needs, and wishes. Returns 404 once the household is claimed.
-  - `POST /households/{id}/claim`: takes the giver's name, email, and phone; responds with the giver's private link. Returns 409 if the household is already claimed or the email has already claimed a household.
+  - `POST /households/{id}/claim`: takes the giver's name, email, and phone; responds with the giver's private link. Returns 409 if the household is already claimed or the email has already claimed a household, and 429 past the [rate limit](#claim-gating).
   - `GET /claims/{token}`: the giver's private view of their household.
 - Admin routes (session required):
   - `GET /login`, `POST /login`, `POST /logout`.

@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stpotter16/wishlist/internal/auth"
 	"github.com/stpotter16/wishlist/internal/handlers"
@@ -19,6 +20,14 @@ import (
 // newTestServer returns the server and its database, so tests can seed rows
 // directly.
 func newTestServer(t *testing.T) (http.Handler, db.DB) {
+	t.Helper()
+	return newTestServerWithClock(t, func() time.Time {
+		return time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	})
+}
+
+// newTestServerWithClock is newTestServer with a clock the test controls.
+func newTestServerWithClock(t *testing.T, now func() time.Time) (http.Handler, db.DB) {
 	t.Helper()
 
 	d, err := db.New(t.TempDir())
@@ -41,7 +50,7 @@ func newTestServer(t *testing.T) (http.Handler, db.DB) {
 		t.Fatalf("sessions.New: %v", err)
 	}
 
-	return handlers.NewServer(store, sm, authentication.New(store)), d
+	return handlers.NewServer(store, sm, authentication.New(store), now), d
 }
 
 // loginAsAdmin seeds an admin and logs in through POST /login, returning the

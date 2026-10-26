@@ -53,7 +53,7 @@ func run(
 
 	authenticator := authentication.New(store)
 
-	handler := handlers.NewServer(store, sessionManager, authenticator)
+	handler := handlers.NewServer(store, sessionManager, authenticator, time.Now)
 	port := getenv("PORT")
 	if port == "" {
 		port = "8080"

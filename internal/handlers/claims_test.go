@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestClaimHouseholdGivesGiverPrivateLink(t *testing.T) {
@@ -196,5 +197,75 @@ func TestClaimPageUnknownTokenIsNotFound(t *testing.T) {
 
 	if got, want := rec.Code, http.StatusNotFound; got != want {
 		t.Errorf("status=%d, want=%d", got, want)
+	}
+}
+
+func TestClaimRateLimitPerNetwork(t *testing.T) {
+	for _, tt := range []struct {
+		explanation     string
+		priorAttemptsIP string
+		priorAttempts   int
+		requestIP       string
+		elapsed         time.Duration
+		statusExpected  int
+	}{
+		{
+			"attempts under the limit reach the claim handler",
+			"203.0.113.1",
+			9,
+			"203.0.113.1",
+			0,
+			http.StatusNotFound,
+		},
+		{
+			"an attempt past the limit is rejected",
+			"203.0.113.1",
+			10,
+			"203.0.113.1",
+			0,
+			http.StatusTooManyRequests,
+		},
+		{
+			"one network's attempts don't limit another network",
+			"203.0.113.1",
+			10,
+			"203.0.113.2",
+			0,
+			http.StatusNotFound,
+		},
+		{
+			"the limit resets after an hour",
+			"203.0.113.1",
+			10,
+			"203.0.113.1",
+			time.Hour,
+			http.StatusNotFound,
+		},
+	} {
+		t.Run(tt.explanation, func(t *testing.T) {
+			now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+			server, _ := newTestServerWithClock(t, func() time.Time { return now })
+
+			// Claims on a missing household still count toward the limit.
+			claim := func(ip string) *httptest.ResponseRecorder {
+				req := httptest.NewRequest(http.MethodPost, "/households/999/claim", strings.NewReader(
+					`{"name": "Giver", "email": "giver@example.com", "phone": "555-0100"}`))
+				req.Header.Set("Fly-Client-IP", ip)
+				rec := httptest.NewRecorder()
+				server.ServeHTTP(rec, req)
+				return rec
+			}
+			for range tt.priorAttempts {
+				if got, want := claim(tt.priorAttemptsIP).Code, http.StatusNotFound; got != want {
+					t.Fatalf("prior attempt status=%d, want=%d", got, want)
+				}
+			}
+
+			now = now.Add(tt.elapsed)
+			rec := claim(tt.requestIP)
+			if got, want := rec.Code, tt.statusExpected; got != want {
+				t.Errorf("status=%d, want=%d, body=%q", got, want, rec.Body.String())
+			}
+		})
 	}
 }
