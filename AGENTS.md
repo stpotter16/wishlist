@@ -29,10 +29,9 @@ Wishlist is a web app for an annual adopt-a-family gift drive.
 
 ## Must do before launch
 
-The current Fly deployment is a stakeholder test drive. It runs without Litestream, so the database resets on every deploy. These items must ship before the app goes to production:
+The current Fly deployment is a stakeholder test drive. It runs without Litestream, so the database resets on every deploy. This item must ship before the app goes to production:
 
 1. **Turn Litestream back on.** Create a bucket and set the `LITESTREAM_BUCKET`, `LITESTREAM_ENDPOINT`, `LITESTREAM_ACCESS_KEY_ID`, and `LITESTREAM_SECRET_ACCESS_KEY` secrets, so production data survives deploys and machine restarts. Without them, `docker-entrypoint` starts the app without replication.
-2. **Create the Turnstile widget.** In the Cloudflare dashboard, create a widget in Managed mode for the app's hostname, then set the `WISHLIST_TURNSTILE_SITE_KEY` and `WISHLIST_TURNSTILE_SECRET_KEY` secrets. The server refuses to start without them. Add the custom domain to the widget's hostnames if one is set up later.
 
 ## Roles
 
@@ -87,6 +86,7 @@ Stakeholders decided on 2026-10-25 to keep claiming open, because codes, approva
 - Claims require a Cloudflare Turnstile check in Managed mode, which the user chose on 2026-10-25 because it stops bots that post straight to the claim endpoint. Most givers never see a challenge, so it stays within the no-barriers decision above.
   - The claim form renders the widget, and the page script sends its token as `turnstileToken`. The server checks it with Cloudflare's siteverify API (`internal/turnstile`) before creating the claim.
   - Tokens are single-use, so the form resets the widget after any failed claim.
+  - The widget is set up in the Cloudflare dashboard in Managed mode for the app's `fly.dev` hostname. If a custom domain is added, add it to the widget's hostnames too, or the widget fails on that domain.
   - Verification fails closed. If Cloudflare is unreachable or rejects the secret key, the claim gets `503` rather than skipping the check.
   - Handlers depend on the `HumanVerifier` interface, and tests pass a fake, so tests never call Cloudflare.
   - A honeypot field was considered and rejected. The form already submits through JavaScript, which stops the non-JS bots a honeypot catches, and bots that post JSON directly skip hidden fields.
