@@ -22,7 +22,8 @@ func CspMiddleware(next http.Handler) http.Handler {
 		nonce, err := generateNonce()
 		if err != nil {
 			log.Printf("Could not generate nonce: %v", err)
-			http.Error(w, "Error generationg session information", http.StatusInternalServerError)
+			http.Error(w, "Error generating session information", http.StatusInternalServerError)
+			return
 		}
 
 		type cspDirective struct {

@@ -49,7 +49,6 @@ The current Fly deployment is a stakeholder test drive. It runs without Litestre
      - **Admin approval or email confirmation.** Claims start as pending until an admin approves or the giver confirms by email. Either is the strongest protection, but needs a pending claim state and a migration. See [emailing giver links](#open-decisions-resolve-before-launch).
      - **Admin alerting.** Email admins on each claim, or flag bursts, so they can release bogus claims quickly. This depends on an email provider.
 3. **Turn Litestream back on.** Create a bucket and set the `LITESTREAM_BUCKET`, `LITESTREAM_ENDPOINT`, `LITESTREAM_ACCESS_KEY_ID`, and `LITESTREAM_SECRET_ACCESS_KEY` secrets, so production data survives deploys and machine restarts. Without them, `docker-entrypoint` starts the app without replication.
-4. **Fix the missing `return` in `CspMiddleware`.** When `generateNonce` fails, `internal/handlers/middleware/csp.go` writes a 500 but keeps going: it sets a CSP header with an empty nonce and calls the next handler, which then writes a second response on top of the error. Return right after `http.Error`. While there, fix the "generationg" typo in the error message.
 
 ## Roles
 
