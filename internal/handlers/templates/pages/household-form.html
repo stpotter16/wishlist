@@ -1,14 +1,29 @@
 {{ define "title" }}{{ .Heading }}{{ end }}
 {{ define "script-tags" }}
   <script type="module" nonce="{{ .CspNonce }}">
-    const form = document.getElementById("family-form");
+    const form = document.getElementById("household-form");
     const members = document.getElementById("members");
     const memberTemplate = document.getElementById("member-template");
+    const addMemberButton = document.getElementById("add-member");
+    const headHeading = members.querySelector("[data-head-heading]");
+
+    function selectedKind() {
+      return form.querySelector("input[name='kind']:checked").value;
+    }
+
+    // The head's label depends on the household's kind, so the heading
+    // previews it. A single woman's household has no children to add.
+    function applyKind() {
+      // Mirrors the server's labels in parse.ParseHouseholdPost.
+      const isSingle = selectedKind() === "single";
+      headHeading.textContent = isSingle ? "Woman" : "Mom";
+      addMemberButton.classList.toggle("hidden", isSingle);
+    }
 
     // A child's label is built from their age, so the heading previews it.
     function wireChildSection(section) {
       const remove = section.querySelector("[data-action='remove']");
-      // Mom's section has neither a remove button nor an age.
+      // The head's section has neither a remove button nor an age.
       if (!remove) {
         return;
       }
@@ -20,7 +35,7 @@
       section
         .querySelector("[data-field='age']")
         .addEventListener("input", (evt) => {
-          // Mirrors the server's labels in parse.ParseFamilyPost.
+          // Mirrors the server's labels in parse.ParseHouseholdPost.
           const age = evt.target.value;
           if (age === "") {
             heading.textContent = "Child";
@@ -39,8 +54,8 @@
       return section;
     }
 
-    // Mom's section has no age or gender fields, so missing fields read as
-    // blank.
+    // The head's section has no age or gender fields, and a child's has no
+    // last initial, so missing fields read as blank.
     function fieldValue(section, name) {
       const field = section.querySelector(`[data-field='${name}']`);
       return field ? field.value : "";
@@ -49,6 +64,8 @@
     function readMember(section) {
       const age = fieldValue(section, "age");
       return {
+        firstName: fieldValue(section, "firstName"),
+        lastInitial: fieldValue(section, "lastInitial"),
         age: age === "" ? null : Number(age),
         gender: fieldValue(section, "gender"),
         shirtSize: fieldValue(section, "shirtSize"),
@@ -72,7 +89,7 @@
       });
     }
 
-    async function saveFamily(family) {
+    async function saveHousehold(household) {
       return fetch(form.dataset.submitUrl, {
         method: form.dataset.submitMethod,
         mode: "same-origin",
@@ -80,7 +97,7 @@
         cache: "no-cache",
         redirect: "error",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(family),
+        body: JSON.stringify(household),
       }).then((response) => {
         if (!response.ok) {
           return response.text().then((error) => Promise.reject(error));
@@ -89,8 +106,12 @@
       });
     }
 
-    document.getElementById("add-member").addEventListener("click", () => {
-      addMember().querySelector("[data-field='age']").focus();
+    addMemberButton.addEventListener("click", () => {
+      addMember().querySelector("[data-field='firstName']").focus();
+    });
+
+    form.querySelectorAll("input[name='kind']").forEach((radio) => {
+      radio.addEventListener("change", applyKind);
     });
 
     document.getElementById("error-close").addEventListener("click", () => {
@@ -99,15 +120,16 @@
 
     form.addEventListener("submit", (evt) => {
       evt.preventDefault();
-      const family = {
+      const household = {
+        kind: selectedKind(),
         members: Array.from(members.querySelectorAll("[data-member]")).map(
           readMember,
         ),
       };
       setFormState(false);
-      saveFamily(family)
+      saveHousehold(household)
         .then((saved) => {
-          document.location = `/admin/families/${saved.id}`;
+          document.location = `/admin/households/${saved.id}`;
         })
         .catch((error) => {
           setFormState(true);
@@ -118,6 +140,7 @@
     });
 
     members.querySelectorAll("[data-member]").forEach(wireChildSection);
+    applyKind();
   </script>
 {{ end }}
 {{ define "page-content" }}
@@ -146,13 +169,41 @@
   </div>
 
   <form
-    id="family-form"
+    id="household-form"
     data-submit-method="{{ .SubmitMethod }}"
     data-submit-url="{{ .SubmitURL }}"
     class="mt-6 flex flex-col gap-4"
   >
+    <fieldset class="rounded-xl bg-surface p-5 shadow-sm">
+      <legend class="sr-only">Household type</legend>
+      <p aria-hidden="true" class="mb-2 text-sm font-semibold">
+        Household type
+      </p>
+      <div class="flex flex-wrap gap-x-6 gap-y-2">
+        <label class="flex items-center gap-2">
+          <input
+            type="radio"
+            name="kind"
+            value="family"
+            {{ if eq .Household.Kind "family" }}checked{{ end }}
+            class="size-4 accent-accent disabled:opacity-50"
+          />
+          <span class="text-sm">Family (mom and children)</span>
+        </label>
+        <label class="flex items-center gap-2">
+          <input
+            type="radio"
+            name="kind"
+            value="single"
+            {{ if eq .Household.Kind "single" }}checked{{ end }}
+            class="size-4 accent-accent disabled:opacity-50"
+          />
+          <span class="text-sm">Single woman</span>
+        </label>
+      </div>
+    </fieldset>
     <div id="members" class="flex flex-col gap-4">
-      {{ range $i, $member := .Family.Members }}
+      {{ range $i, $member := .Household.Members }}
         {{ template "member-fieldset" (memberSection $member (eq $i 0)) }}
       {{ else }}
         {{ template "member-fieldset" (memberSection .EmptyMember true) }}
@@ -163,13 +214,13 @@
       type="button"
       class="inline-flex items-center justify-center rounded-lg border border-border px-4 py-2 text-sm font-semibold hover:bg-surface disabled:opacity-50"
     >
-      Add member
+      Add child
     </button>
     <button
       type="submit"
       class="inline-flex items-center justify-center rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50"
     >
-      Save family
+      Save household
     </button>
   </form>
 

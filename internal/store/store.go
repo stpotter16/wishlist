@@ -9,9 +9,9 @@ import (
 
 var ErrAdminNotFound = errors.New("admin not found")
 var ErrAdminExists = errors.New("admin already exists")
-var ErrFamilyNotFound = errors.New("family not found")
-var ErrFamilyAlreadyClaimed = errors.New("family is already claimed")
-var ErrEmailAlreadyClaimed = errors.New("email has already claimed a family")
+var ErrHouseholdNotFound = errors.New("household not found")
+var ErrHouseholdAlreadyClaimed = errors.New("household is already claimed")
+var ErrEmailAlreadyClaimed = errors.New("email has already claimed a household")
 var ErrClaimNotFound = errors.New("claim not found")
 
 type Store interface {
@@ -19,19 +19,19 @@ type Store interface {
 	GetAdminByUsername(ctx context.Context, username string) (types.Admin, error)
 	CreateAdmin(ctx context.Context, username, passwordHash string) error
 
-	// Families
-	CreateFamily(ctx context.Context, family types.Family) (int, error)
-	UpdateFamily(ctx context.Context, id int, family types.Family) error
-	DeleteFamily(ctx context.Context, id int) error
-	ListFamilies(ctx context.Context) ([]types.FamilySummary, error)
-	ListUnclaimedFamilies(ctx context.Context) ([]types.FamilySummary, error)
-	GetUnclaimedFamily(ctx context.Context, id int) (types.Family, error)
-	GetFamily(ctx context.Context, id int) (types.Family, error)
+	// Households
+	CreateHousehold(ctx context.Context, household types.Household) (int, error)
+	UpdateHousehold(ctx context.Context, id int, household types.Household) error
+	DeleteHousehold(ctx context.Context, id int) error
+	ListHouseholds(ctx context.Context) ([]types.HouseholdSummary, error)
+	ListUnclaimedHouseholds(ctx context.Context) ([]types.HouseholdSummary, error)
+	GetUnclaimedHousehold(ctx context.Context, id int) (types.Household, error)
+	GetHousehold(ctx context.Context, id int) (types.Household, error)
 
 	// Claims
 	CreateClaim(ctx context.Context, claim types.NewClaim) error
-	GetClaimedFamily(ctx context.Context, accessTokenHash string) (types.Family, error)
-	GetClaim(ctx context.Context, familyID int) (types.Claim, error)
-	DeleteClaim(ctx context.Context, familyID int) error
-	ReplaceClaimToken(ctx context.Context, familyID int, accessTokenHash string) error
+	GetClaimedHousehold(ctx context.Context, accessTokenHash string) (types.Household, error)
+	GetClaim(ctx context.Context, householdID int) (types.Claim, error)
+	DeleteClaim(ctx context.Context, householdID int) error
+	ReplaceClaimToken(ctx context.Context, householdID int, accessTokenHash string) error
 }

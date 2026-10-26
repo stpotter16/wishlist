@@ -11,23 +11,23 @@ import (
 	"github.com/stpotter16/wishlist/internal/types"
 )
 
-func TestCreateClaimMovesFamilyFromPublicToGiver(t *testing.T) {
+func TestCreateClaimMovesHouseholdFromPublicToGiver(t *testing.T) {
 	s, d := newTestStore(t)
 	ctx := context.Background()
 
 	if _, err := d.Exec(ctx, `
-	INSERT INTO family (id, created_time, last_modified_time) VALUES
-		(1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
-	INSERT INTO family_member
-		(family_id, label, created_time, last_modified_time)
+	INSERT INTO household (id, kind, created_time, last_modified_time) VALUES
+		(1, 'family', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+	INSERT INTO household_member
+		(household_id, first_name, label, created_time, last_modified_time)
 	VALUES
-		(1, 'Mom', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+		(1, 'Maria', 'Mom', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
 	`); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
 
 	if err := s.CreateClaim(ctx, types.NewClaim{
-		FamilyID: 1,
+		HouseholdID: 1,
 		Giver: types.Giver{
 			Name:  "Giver",
 			Email: "giver@example.com",
@@ -38,49 +38,49 @@ func TestCreateClaimMovesFamilyFromPublicToGiver(t *testing.T) {
 		t.Fatalf("CreateClaim: %v", err)
 	}
 
-	family, err := s.GetClaimedFamily(ctx, "token-hash")
+	household, err := s.GetClaimedHousehold(ctx, "token-hash")
 	if err != nil {
-		t.Fatalf("GetClaimedFamily: %v", err)
+		t.Fatalf("GetClaimedHousehold: %v", err)
 	}
-	if got, want := family.ID, 1; got != want {
-		t.Errorf("family.ID=%d, want=%d", got, want)
+	if got, want := household.ID, 1; got != want {
+		t.Errorf("household.ID=%d, want=%d", got, want)
 	}
-	if got, want := family.Members[0].Label, "Mom"; got != want {
+	if got, want := household.Members[0].Label, "Mom"; got != want {
 		t.Errorf("member label=%q, want=%q", got, want)
 	}
 
-	if _, err := s.GetUnclaimedFamily(ctx, 1); err != store.ErrFamilyNotFound {
-		t.Errorf("GetUnclaimedFamily err=%v, want=%v", err, store.ErrFamilyNotFound)
+	if _, err := s.GetUnclaimedHousehold(ctx, 1); err != store.ErrHouseholdNotFound {
+		t.Errorf("GetUnclaimedHousehold err=%v, want=%v", err, store.ErrHouseholdNotFound)
 	}
 }
 
 func TestCreateClaimRejectsInvalidClaims(t *testing.T) {
 	for _, tt := range []struct {
 		explanation string
-		familyID    int
+		householdID int
 		giverEmail  string
 		errExpected error
 	}{
 		{
-			"family that doesn't exist can't be claimed",
+			"household that doesn't exist can't be claimed",
 			99,
 			"new@example.com",
-			store.ErrFamilyNotFound,
+			store.ErrHouseholdNotFound,
 		},
 		{
-			"family with no members can't be claimed",
+			"household with no members can't be claimed",
 			3,
 			"new@example.com",
-			store.ErrFamilyNotFound,
+			store.ErrHouseholdNotFound,
 		},
 		{
-			"family that's already claimed can't be claimed again",
+			"household that's already claimed can't be claimed again",
 			2,
 			"new@example.com",
-			store.ErrFamilyAlreadyClaimed,
+			store.ErrHouseholdAlreadyClaimed,
 		},
 		{
-			"email that already claimed a family can't claim another",
+			"email that already claimed a household can't claim another",
 			1,
 			"giver@example.com",
 			store.ErrEmailAlreadyClaimed,
@@ -92,24 +92,24 @@ func TestCreateClaimRejectsInvalidClaims(t *testing.T) {
 			store.ErrEmailAlreadyClaimed,
 		},
 	} {
-		t.Run(fmt.Sprintf("%s [family=%d, email=%s]", tt.explanation, tt.familyID, tt.giverEmail), func(t *testing.T) {
+		t.Run(fmt.Sprintf("%s [household=%d, email=%s]", tt.explanation, tt.householdID, tt.giverEmail), func(t *testing.T) {
 			s, d := newTestStore(t)
 			ctx := context.Background()
 
-			// Family 1 is unclaimed. giver@example.com claimed family 2.
-			// Family 3 has no members.
+			// Household 1 is unclaimed. giver@example.com claimed household 2.
+			// Household 3 has no members.
 			if _, err := d.Exec(ctx, `
-			INSERT INTO family (id, created_time, last_modified_time) VALUES
-				(1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-				(2, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-				(3, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
-			INSERT INTO family_member
-				(family_id, label, created_time, last_modified_time)
+			INSERT INTO household (id, kind, created_time, last_modified_time) VALUES
+				(1, 'family', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+				(2, 'family', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+				(3, 'family', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+			INSERT INTO household_member
+				(household_id, first_name, label, created_time, last_modified_time)
 			VALUES
-				(1, 'Mom', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-				(2, 'Dad', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+				(1, 'Maria', 'Mom', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+				(2, 'Dan', 'Dad', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
 			INSERT INTO claim (
-				family_id, giver_name, giver_email, giver_phone,
+				household_id, giver_name, giver_email, giver_phone,
 				access_token_hash, created_time
 			) VALUES (
 				2, 'Giver', 'giver@example.com', '555-0100', 'existing-hash',
@@ -120,7 +120,7 @@ func TestCreateClaimRejectsInvalidClaims(t *testing.T) {
 			}
 
 			err := s.CreateClaim(ctx, types.NewClaim{
-				FamilyID: tt.familyID,
+				HouseholdID: tt.householdID,
 				Giver: types.Giver{
 					Name:  "New Giver",
 					Email: tt.giverEmail,
@@ -135,10 +135,10 @@ func TestCreateClaimRejectsInvalidClaims(t *testing.T) {
 	}
 }
 
-func TestGetClaimedFamilyUnknownToken(t *testing.T) {
+func TestGetClaimedHouseholdUnknownToken(t *testing.T) {
 	s, _ := newTestStore(t)
 
-	_, err := s.GetClaimedFamily(context.Background(), "unknown-hash")
+	_, err := s.GetClaimedHousehold(context.Background(), "unknown-hash")
 	if got, want := err, store.ErrClaimNotFound; got != want {
 		t.Errorf("err=%v, want=%v", got, want)
 	}
@@ -148,18 +148,18 @@ func TestAdminClaimOperations(t *testing.T) {
 	s, d := newTestStore(t)
 	ctx := context.Background()
 
-	// Family 1 is claimed with token hash "old-hash". Family 2 is unclaimed.
+	// Household 1 is claimed with token hash "old-hash". Household 2 is unclaimed.
 	if _, err := d.Exec(ctx, `
-	INSERT INTO family (id, created_time, last_modified_time) VALUES
-		(1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-		(2, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
-	INSERT INTO family_member
-		(family_id, label, created_time, last_modified_time)
+	INSERT INTO household (id, kind, created_time, last_modified_time) VALUES
+		(1, 'family', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+		(2, 'family', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+	INSERT INTO household_member
+		(household_id, first_name, label, created_time, last_modified_time)
 	VALUES
-		(1, 'Mom', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-		(2, 'Dad', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+		(1, 'Maria', 'Mom', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+		(2, 'Dan', 'Dad', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
 	INSERT INTO claim (
-		family_id, giver_name, giver_email, giver_phone, access_token_hash,
+		household_id, giver_name, giver_email, giver_phone, access_token_hash,
 		created_time
 	) VALUES (
 		1, 'Giver', 'giver@example.com', '555-0100', 'old-hash',
@@ -188,10 +188,10 @@ func TestAdminClaimOperations(t *testing.T) {
 	if err := s.ReplaceClaimToken(ctx, 1, "new-hash"); err != nil {
 		t.Fatalf("ReplaceClaimToken: %v", err)
 	}
-	if _, err := s.GetClaimedFamily(ctx, "old-hash"); err != store.ErrClaimNotFound {
+	if _, err := s.GetClaimedHousehold(ctx, "old-hash"); err != store.ErrClaimNotFound {
 		t.Errorf("old token err=%v, want=%v", err, store.ErrClaimNotFound)
 	}
-	if _, err := s.GetClaimedFamily(ctx, "new-hash"); err != nil {
+	if _, err := s.GetClaimedHousehold(ctx, "new-hash"); err != nil {
 		t.Errorf("new token err=%v, want=nil", err)
 	}
 
@@ -201,18 +201,18 @@ func TestAdminClaimOperations(t *testing.T) {
 	if _, err := s.GetClaim(ctx, 1); err != store.ErrClaimNotFound {
 		t.Errorf("GetClaim after release err=%v, want=%v", err, store.ErrClaimNotFound)
 	}
-	if _, err := s.GetUnclaimedFamily(ctx, 1); err != nil {
-		t.Errorf("GetUnclaimedFamily after release err=%v, want=nil", err)
+	if _, err := s.GetUnclaimedHousehold(ctx, 1); err != nil {
+		t.Errorf("GetUnclaimedHousehold after release err=%v, want=nil", err)
 	}
 }
 
-func TestAdminClaimOperationsOnUnclaimedFamily(t *testing.T) {
+func TestAdminClaimOperationsOnUnclaimedHousehold(t *testing.T) {
 	s, d := newTestStore(t)
 	ctx := context.Background()
 
 	if _, err := d.Exec(ctx, `
-	INSERT INTO family (id, created_time, last_modified_time) VALUES
-		(2, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+	INSERT INTO household (id, kind, created_time, last_modified_time) VALUES
+		(2, 'family', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
 	`); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
@@ -228,26 +228,26 @@ func TestAdminClaimOperationsOnUnclaimedFamily(t *testing.T) {
 	}
 }
 
-func TestGetFamilyIncludesMemberlessFamily(t *testing.T) {
+func TestGetHouseholdIncludesMemberlessHousehold(t *testing.T) {
 	s, d := newTestStore(t)
 	ctx := context.Background()
 
 	if _, err := d.Exec(ctx, `
-	INSERT INTO family (id, created_time, last_modified_time) VALUES
-		(3, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+	INSERT INTO household (id, kind, created_time, last_modified_time) VALUES
+		(3, 'family', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
 	`); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
 
-	family, err := s.GetFamily(ctx, 3)
+	household, err := s.GetHousehold(ctx, 3)
 	if err != nil {
-		t.Fatalf("GetFamily: %v", err)
+		t.Fatalf("GetHousehold: %v", err)
 	}
-	if got, want := len(family.Members), 0; got != want {
+	if got, want := len(household.Members), 0; got != want {
 		t.Errorf("len(Members)=%d, want=%d", got, want)
 	}
 
-	if _, err := s.GetFamily(ctx, 99); err != store.ErrFamilyNotFound {
-		t.Errorf("missing family err=%v, want=%v", err, store.ErrFamilyNotFound)
+	if _, err := s.GetHousehold(ctx, 99); err != store.ErrHouseholdNotFound {
+		t.Errorf("missing household err=%v, want=%v", err, store.ErrHouseholdNotFound)
 	}
 }

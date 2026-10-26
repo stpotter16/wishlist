@@ -10,18 +10,18 @@ import (
 	"testing"
 )
 
-func TestClaimFamilyGivesGiverPrivateLink(t *testing.T) {
+func TestClaimHouseholdGivesGiverPrivateLink(t *testing.T) {
 	server, d := newTestServer(t)
 
 	if _, err := d.Exec(context.Background(), `
-	INSERT INTO family (id, created_time, last_modified_time) VALUES
-		(1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
-	INSERT INTO family_member
-		(id, family_id, label, created_time, last_modified_time)
+	INSERT INTO household (id, kind, created_time, last_modified_time) VALUES
+		(1, 'family', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+	INSERT INTO household_member
+		(id, household_id, first_name, label, created_time, last_modified_time)
 	VALUES
-		(10, 1, 'Mom', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+		(10, 1, 'Maria', 'Mom', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
 	INSERT INTO wishlist_item (
-		family_member_id, kind, name, created_time, last_modified_time
+		household_member_id, kind, name, created_time, last_modified_time
 	) VALUES
 		(10, 'need', 'Winter coat', '2026-01-01T00:00:00Z',
 			'2026-01-01T00:00:00Z');
@@ -29,7 +29,7 @@ func TestClaimFamilyGivesGiverPrivateLink(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 
-	req := httptest.NewRequest(http.MethodPost, "/families/1/claim", strings.NewReader(
+	req := httptest.NewRequest(http.MethodPost, "/households/1/claim", strings.NewReader(
 		`{"name": "Giver", "email": "giver@example.com", "phone": "555-0100"}`))
 	rec := httptest.NewRecorder()
 	server.ServeHTTP(rec, req)
@@ -47,7 +47,7 @@ func TestClaimFamilyGivesGiverPrivateLink(t *testing.T) {
 		t.Fatalf("url=%q, want prefix /claims/", claim.URL)
 	}
 
-	// The private link shows the family.
+	// The private link shows the household.
 	req = httptest.NewRequest(http.MethodGet, claim.URL, nil)
 	rec = httptest.NewRecorder()
 	server.ServeHTTP(rec, req)
@@ -58,8 +58,11 @@ func TestClaimFamilyGivesGiverPrivateLink(t *testing.T) {
 	// Collapse whitespace like a browser does, so template formatting doesn't
 	// matter.
 	body := strings.Join(strings.Fields(rec.Body.String()), " ")
-	if !strings.Contains(body, "You adopted Family 1") {
-		t.Errorf("private link is missing family heading")
+	if !strings.Contains(body, "You adopted Household 1") {
+		t.Errorf("private link is missing household heading")
+	}
+	if !strings.Contains(body, "Maria") {
+		t.Errorf("private link is missing member name")
 	}
 	if !strings.Contains(body, "Winter coat") {
 		t.Errorf("private link is missing need")
@@ -71,23 +74,23 @@ func TestClaimFamilyGivesGiverPrivateLink(t *testing.T) {
 		t.Errorf("Referrer-Policy=%q, want=%q", got, want)
 	}
 
-	// The family leaves the public listing and its public page.
+	// The household leaves the public listing and its public page.
 	req = httptest.NewRequest(http.MethodGet, "/", nil)
 	rec = httptest.NewRecorder()
 	server.ServeHTTP(rec, req)
-	if strings.Contains(rec.Body.String(), "Family 1") {
-		t.Errorf("public listing still shows claimed family")
+	if strings.Contains(rec.Body.String(), "Household 1") {
+		t.Errorf("public listing still shows claimed household")
 	}
 
-	req = httptest.NewRequest(http.MethodGet, "/families/1", nil)
+	req = httptest.NewRequest(http.MethodGet, "/households/1", nil)
 	rec = httptest.NewRecorder()
 	server.ServeHTTP(rec, req)
 	if got, want := rec.Code, http.StatusNotFound; got != want {
-		t.Errorf("public family page status=%d, want=%d", got, want)
+		t.Errorf("public household page status=%d, want=%d", got, want)
 	}
 }
 
-func TestClaimFamilyRejectsInvalidClaims(t *testing.T) {
+func TestClaimHouseholdRejectsInvalidClaims(t *testing.T) {
 	for _, tt := range []struct {
 		explanation string
 		path        string
@@ -96,55 +99,55 @@ func TestClaimFamilyRejectsInvalidClaims(t *testing.T) {
 	}{
 		{
 			"body that isn't JSON is rejected",
-			"/families/1/claim",
+			"/households/1/claim",
 			`not json`,
 			http.StatusBadRequest,
 		},
 		{
 			"claim without a name is rejected",
-			"/families/1/claim",
+			"/households/1/claim",
 			`{"name": "  ", "email": "new@example.com", "phone": "555-0199"}`,
 			http.StatusBadRequest,
 		},
 		{
 			"claim without a phone is rejected",
-			"/families/1/claim",
+			"/households/1/claim",
 			`{"name": "New", "email": "new@example.com", "phone": ""}`,
 			http.StatusBadRequest,
 		},
 		{
 			"claim with a malformed email is rejected",
-			"/families/1/claim",
+			"/households/1/claim",
 			`{"name": "New", "email": "not-an-email", "phone": "555-0199"}`,
 			http.StatusBadRequest,
 		},
 		{
 			"claim with a display-name email is rejected",
-			"/families/1/claim",
+			"/households/1/claim",
 			`{"name": "New", "email": "New <new@example.com>", "phone": "555-0199"}`,
 			http.StatusBadRequest,
 		},
 		{
-			"claim on a family that doesn't exist is not found",
-			"/families/99/claim",
+			"claim on a household that doesn't exist is not found",
+			"/households/99/claim",
 			`{"name": "New", "email": "new@example.com", "phone": "555-0199"}`,
 			http.StatusNotFound,
 		},
 		{
-			"claim on a non-numeric family ID is not found",
-			"/families/abc/claim",
+			"claim on a non-numeric household ID is not found",
+			"/households/abc/claim",
 			`{"name": "New", "email": "new@example.com", "phone": "555-0199"}`,
 			http.StatusNotFound,
 		},
 		{
-			"claim on an already claimed family conflicts",
-			"/families/2/claim",
+			"claim on an already claimed household conflicts",
+			"/households/2/claim",
 			`{"name": "New", "email": "new@example.com", "phone": "555-0199"}`,
 			http.StatusConflict,
 		},
 		{
-			"claim with an email that already claimed a family conflicts",
-			"/families/1/claim",
+			"claim with an email that already claimed a household conflicts",
+			"/households/1/claim",
 			`{"name": "New", "email": "giver@example.com", "phone": "555-0199"}`,
 			http.StatusConflict,
 		},
@@ -152,18 +155,18 @@ func TestClaimFamilyRejectsInvalidClaims(t *testing.T) {
 		t.Run(fmt.Sprintf("%s [%s]", tt.explanation, tt.path), func(t *testing.T) {
 			server, d := newTestServer(t)
 
-			// Family 1 is unclaimed. giver@example.com claimed family 2.
+			// Household 1 is unclaimed. giver@example.com claimed household 2.
 			if _, err := d.Exec(context.Background(), `
-			INSERT INTO family (id, created_time, last_modified_time) VALUES
-				(1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-				(2, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
-			INSERT INTO family_member
-				(family_id, label, created_time, last_modified_time)
+			INSERT INTO household (id, kind, created_time, last_modified_time) VALUES
+				(1, 'family', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+				(2, 'family', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+			INSERT INTO household_member
+				(household_id, first_name, label, created_time, last_modified_time)
 			VALUES
-				(1, 'Mom', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-				(2, 'Dad', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+				(1, 'Maria', 'Mom', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+				(2, 'Dan', 'Dad', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
 			INSERT INTO claim (
-				family_id, giver_name, giver_email, giver_phone,
+				household_id, giver_name, giver_email, giver_phone,
 				access_token_hash, created_time
 			) VALUES (
 				2, 'Giver', 'giver@example.com', '555-0100', 'existing-hash',

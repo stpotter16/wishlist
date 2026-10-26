@@ -3,8 +3,35 @@
     data-member
     class="flex flex-col gap-4 rounded-xl bg-surface p-5 shadow-sm"
   >
-    {{ if .IsMom }}
-      <h2 class="text-lg font-semibold">Mom</h2>
+    {{ if .IsHead }}
+      <h2 data-head-heading class="text-lg font-semibold">
+        {{ with .Member.Label }}{{ . }}{{ else }}Mom{{ end }}
+      </h2>
+      <div class="grid grid-cols-3 gap-4">
+        <label class="col-span-2 block">
+          <span class="mb-1 block text-sm font-semibold">First name</span>
+          <input
+            data-field="firstName"
+            value="{{ .Member.FirstName }}"
+            type="text"
+            required
+            autocomplete="off"
+            class="w-full rounded-lg border border-border bg-page px-3 py-2 text-sm focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50"
+          />
+        </label>
+        <label class="block">
+          <span class="mb-1 block text-sm font-semibold">Last initial</span>
+          <input
+            data-field="lastInitial"
+            value="{{ .Member.LastInitial }}"
+            type="text"
+            required
+            maxlength="1"
+            autocomplete="off"
+            class="w-full rounded-lg border border-border bg-page px-3 py-2 text-sm focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50"
+          />
+        </label>
+      </div>
     {{ else }}
       <div class="flex items-center justify-between gap-4">
         <h2 data-member-heading class="text-lg font-semibold">
@@ -18,6 +45,17 @@
           Remove
         </button>
       </div>
+      <label class="block">
+        <span class="mb-1 block text-sm font-semibold">First name</span>
+        <input
+          data-field="firstName"
+          value="{{ .Member.FirstName }}"
+          type="text"
+          required
+          autocomplete="off"
+          class="w-full rounded-lg border border-border bg-page px-3 py-2 text-sm focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50"
+        />
+      </label>
       <div class="grid grid-cols-2 gap-4">
         <label class="block">
           <span class="mb-1 block text-sm font-semibold">Age</span>

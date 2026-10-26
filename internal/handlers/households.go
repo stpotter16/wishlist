@@ -11,13 +11,13 @@ import (
 	"github.com/stpotter16/wishlist/internal/types"
 )
 
-func familiesGet(s store.Store) http.HandlerFunc {
+func householdsGet(s store.Store) http.HandlerFunc {
 	t := template.Must(
 		template.New("base.html").
 			ParseFS(
 				templateFS,
 				"templates/layouts/base.html",
-				"templates/pages/families.html",
+				"templates/pages/households.html",
 			))
 	return func(w http.ResponseWriter, r *http.Request) {
 		nonce, err := extractCspNonceOnly(r)
@@ -27,36 +27,36 @@ func familiesGet(s store.Store) http.HandlerFunc {
 			return
 		}
 
-		families, err := s.ListUnclaimedFamilies(r.Context())
+		households, err := s.ListUnclaimedHouseholds(r.Context())
 		if err != nil {
-			log.Printf("familiesGet: failed to list unclaimed families: %v", err)
+			log.Printf("householdsGet: failed to list unclaimed households: %v", err)
 			renderAppError(w, r, http.StatusInternalServerError)
 			return
 		}
 
 		props := struct {
 			viewProps
-			Families []types.FamilySummary
+			Households []types.HouseholdSummary
 		}{
-			viewProps: viewProps{CspNonce: nonce},
-			Families:  families,
+			viewProps:  viewProps{CspNonce: nonce},
+			Households: households,
 		}
 
 		if err := t.Execute(w, props); err != nil {
-			log.Printf("Could not create families page: %v", err)
+			log.Printf("Could not create households page: %v", err)
 			renderAppError(w, r, http.StatusInternalServerError)
 		}
 	}
 }
 
-func familyGet(s store.Store) http.HandlerFunc {
+func householdGet(s store.Store) http.HandlerFunc {
 	t := template.Must(
 		template.New("base.html").
 			ParseFS(
 				templateFS,
 				"templates/layouts/base.html",
-				"templates/partials/family-members.html",
-				"templates/pages/family.html",
+				"templates/partials/household-members.html",
+				"templates/pages/household.html",
 			))
 	return func(w http.ResponseWriter, r *http.Request) {
 		nonce, err := extractCspNonceOnly(r)
@@ -72,27 +72,27 @@ func familyGet(s store.Store) http.HandlerFunc {
 			return
 		}
 
-		family, err := s.GetUnclaimedFamily(r.Context(), id)
-		if errors.Is(err, store.ErrFamilyNotFound) {
+		household, err := s.GetUnclaimedHousehold(r.Context(), id)
+		if errors.Is(err, store.ErrHouseholdNotFound) {
 			renderAppError(w, r, http.StatusNotFound)
 			return
 		}
 		if err != nil {
-			log.Printf("familyGet: failed to get family %d: %v", id, err)
+			log.Printf("householdGet: failed to get household %d: %v", id, err)
 			renderAppError(w, r, http.StatusInternalServerError)
 			return
 		}
 
 		props := struct {
 			viewProps
-			Family types.Family
+			Household types.Household
 		}{
 			viewProps: viewProps{CspNonce: nonce},
-			Family:    family,
+			Household: household,
 		}
 
 		if err := t.Execute(w, props); err != nil {
-			log.Printf("Could not create family page: %v", err)
+			log.Printf("Could not create household page: %v", err)
 			renderAppError(w, r, http.StatusInternalServerError)
 		}
 	}

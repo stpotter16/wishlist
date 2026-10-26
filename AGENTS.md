@@ -9,16 +9,16 @@ Wishlist is a web app for an annual adopt-a-family gift drive.
 > [!IMPORTANT]
 > Two product decisions are still open, and stakeholders are test-driving the app to inform them. Do not pick an answer or build either feature without the user's explicit decision. Whenever a task touches claims, giver links, or launch readiness, remind the user that these decisions are still open.
 
-1. **Claim gating.** Anyone with the URL can browse and claim unclaimed families, so one person could claim every family with fake emails.
+1. **Claim gating.** Anyone with the URL can browse and claim unclaimed households, so one person could claim every household with fake emails.
    - Options so far: ship ungated, require a shared access code, have admins approve claims, or rate-limit claims.
-   - Affects `POST /families/{id}/claim`, the public listing, and possibly the claim form.
+   - Affects `POST /households/{id}/claim`, the public listing, and possibly the claim form.
 2. **Emailing giver links.** The app shows a giver's private link only on screen after claiming. A giver who loses it must ask an admin to issue a new one.
    - Open questions: which email provider, whether to send the link automatically on claim, and whether admins' "Issue new link" also sends it.
    - The database stores only token hashes, so any re-send must issue a new token, which invalidates the old link.
    - Solution space (explored 2026-10-23, nothing chosen):
      - **When to send.** Choose one:
        - Send on claim and still show the link on screen. Simplest, and gives givers a copy they can find later, but adds no abuse protection.
-       - Send on claim and show the link only in the email. A claimer must control a real mailbox to see the family, which deters fake-email claims. Disposable mailboxes still get through, and a giver whose email bounces or lands in spam is stuck until an admin re-issues the link.
+       - Send on claim and show the link only in the email. A claimer must control a real mailbox to see the household, which deters fake-email claims. Disposable mailboxes still get through, and a giver whose email bounces or lands in spam is stuck until an admin re-issues the link.
        - Hold the claim as pending until the giver clicks an emailed confirmation link, then release it automatically if no one confirms within a set window. This is the strongest email-based gate, but it needs a pending claim state, an expiry job or lazy expiry check, and a schema migration. It overlaps with [claim gating](#open-decisions-resolve-before-launch) and [bot defense](#must-do-before-launch).
      - **Admin re-send.** "Issue new link" could email the new link directly, show it for the admin to copy, or both. Emailing it directly keeps the token off the admin's screen and clipboard.
      - **Provider.** Volume is tiny (one email per claim, at most a few hundred per season), so any free tier works. Candidates: Postmark (strong deliverability, transactional only), Resend (simple HTTP API), AWS SES (cheapest, more setup), or plain SMTP through an existing mailbox. An HTTP API needs no new Go dependency, since `net/http` can call it.
@@ -35,10 +35,10 @@ Wishlist is a web app for an annual adopt-a-family gift drive.
 The current Fly deployment is a stakeholder test drive. It runs without Litestream, so the database resets on every deploy. These items must ship before the app goes to production:
 
 1. **Favicon.** `layouts/base.html` links `/static/assets/favicon.svg`, but the file doesn't exist, so every page load 404s on it. Browsers also request `/favicon.ico` on their own.
-2. **Bot defense on `POST /families/{id}/claim`.** It's a public, unauthenticated form that takes contact details, so bots can spam it or claim families.
+2. **Bot defense on `POST /households/{id}/claim`.** It's a public, unauthenticated form that takes contact details, so bots can spam it or claim households.
    - Overlaps with the [claim gating decision](#open-decisions-resolve-before-launch). Settle the approach with the user before building, since options like a CAPTCHA would also need Content Security Policy changes.
    - Solution space (explored 2026-10-23, nothing chosen). The options stack, so a combination is likely:
-     - **Baseline that already exists.** The claim form posts JSON through `fetch`, so generic form-spam bots that submit HTML forms never reach the handler. `ErrEmailAlreadyClaimed` limits each email to one family, but fake emails defeat it. Admins can release bogus claims from the admin page.
+     - **Baseline that already exists.** The claim form posts JSON through `fetch`, so generic form-spam bots that submit HTML forms never reach the handler. `ErrEmailAlreadyClaimed` limits each email to one household, but fake emails defeat it. Admins can release bogus claims from the admin page.
      - **Honeypot field and minimum fill time.** Add a hidden field that humans leave empty, plus a render timestamp, and reject submissions that fill the honeypot or arrive too fast. This needs no dependency, no CSP change, and no friction for givers, but stops only unsophisticated bots.
      - **Per-IP rate limiting.** Limit claims per client IP, for example a few per hour. Read the IP from Fly's `Fly-Client-IP` header, not `RemoteAddr`, which is Fly's proxy. An in-memory limiter is fine because the app runs on exactly one machine (`--ha=false`). Hand-roll it, or add `golang.org/x/time/rate`. It slows bulk claiming from one host but not from many IPs.
      - **Cloudflare Turnstile (or hCaptcha).** Turnstile is free, usually invisible, and avoids Google tracking, unlike reCAPTCHA.
@@ -56,36 +56,42 @@ The current Fly deployment is a stakeholder test drive. It runs without Litestre
 - Admins run the drive.
   - Admins log in with a username and password, seeded from the CLI. There is no signup flow.
   - All admins have the same permissions.
-- Givers adopt a family and buy gifts for its members.
+- Givers adopt a household and buy gifts for its members.
   - Givers have no accounts.
-- Recipients are the families. They never use the app.
+- Recipients are the members of each household. They never use the app.
 
 ## Domain
 
 - Admins collect wishlists from recipients offline and enter them into the app.
-- A family groups the recipients in one household (e.g. a mom and her kids).
-  - The app shows a family only by an anonymous label such as "Family 12".
-- Each family member has their own wishlist.
-  - The app shows a member by an anonymous label such as "Mom" or "Child, 7", plus age and gender.
-  - The server builds every member label in `parse.ParseFamilyPost`; the family form has no label field.
-    - The first member of every family is Mom. She is always labeled "Mom" and has no age or gender, since moms rarely want to share their age and the label already implies gender. The form gives her no remove button.
-    - Every other member is a child. Age is required, and the label is "Child, <age>", or "Infant" at age 0. Pages show gender under the label but not age, which the label already includes.
+- A household groups the recipients who live together. It is one of two kinds, stored in `household.kind`:
+  - A family (`family`): a mom and her children.
+  - A single woman (`single`): one woman living on her own.
+  - Admins pick the kind on the household form. The server rejects a family without a child and a single woman's household with more than one member, so a forgotten child can't turn a family into a single woman.
+  - The app shows a household by a label such as "Household 12", plus its kind ("Family" or "Single woman").
+- Each household member has their own wishlist.
+  - The first member is the head of the household: the mom or the single woman. Every other member is a child.
+  - The server builds every member label in `parse.ParseHouseholdPost`; the household form has no label field.
+    - The head is labeled "Mom" in a family and "Woman" in a single woman's household. She has no age or gender, since moms rarely want to share their age and the label already implies gender. The form gives her no remove button.
+    - A child's age is required, and the label is "Child, <age>", or "Infant" at age 0. Pages show gender under the label but not age, which the label already includes.
   - Admins transcribe each member's paper intake sheet. The sheet has free-text "Need" and "Wish" sections, plus clothing sizes (shirt, pant, shoe), preferred brands or colors, preferred toiletry scents, an unscented-products checkbox for sensitive skin, preferred gift cards, and additional info (sports teams, fandoms, hobbies).
   - Each line of the "Need" and "Wish" sections becomes its own wishlist item, tagged `need` or `wish`.
-- Recipient data stays anonymous. Never store names, addresses, phone numbers, or other identifying information for recipients.
-  - Revisit this only after getting feedback from real admins.
+- Keep recipient data minimal. Store only these names, and nothing else that identifies a recipient (no full last names, addresses, or phone numbers):
+  - The head of the household's first name and last initial, shown as "Maria G.". The server accepts exactly one letter for the initial.
+  - Each child's first name only.
+  - Names appear on the household's detail pages: the public household page, the giver's claim page, and the admin page. Listings show only member labels.
+  - The public household page needs no login, so anyone with the URL can see these names before claiming. This ties into the [claim gating decision](#open-decisions-resolve-before-launch).
 
 ## Claims
 
-- A giver claims an entire family, not individual items or members.
-- Claims are one-to-one: each family has at most one giver, and each giver claims one family.
-- Claiming a family requires the giver's name, email, and phone.
+- A giver claims an entire household, not individual items or members.
+- Claims are one-to-one: each household has at most one giver, and each giver claims one household.
+- Claiming a household requires the giver's name, email, and phone.
   - Only admins can read giver contact details.
-- Claimed families disappear from the public family listing.
-- Only admins can release a claim. Givers cannot unclaim a family.
-- Browsing and claiming unclaimed families requires no login or access code.
+- Claimed households disappear from the public household listing.
+- Only admins can release a claim. Givers cannot unclaim a household.
+- Browsing and claiming unclaimed households requires no login or access code.
   - Whether to gate claiming is an [open decision](#open-decisions-resolve-before-launch).
-- Givers return to their claimed family through a private link that carries a random token.
+- Givers return to their claimed household through a private link that carries a random token.
   - Whether to email the link is an [open decision](#open-decisions-resolve-before-launch).
   - The database stores only the SHA-256 hash of each token (`internal/auth/token.go`).
   - Never log a token. The request logger redacts paths under `/claims/`.
@@ -102,21 +108,21 @@ The current Fly deployment is a stakeholder test drive. It runs without Litestre
 - `http.CrossOriginProtection` in `NewServer` guards against CSRF by rejecting cross-origin `POST`, `PUT`, and `DELETE` requests from browsers. There are no CSRF tokens. See [Browser support](#browser-support) for what this assumes.
   - Never change state in a `GET` handler, since the protection skips safe methods.
 - Public routes (givers, no login):
-  - `GET /`: unclaimed families, each shown as "Family N" with its member labels.
-  - `GET /families/{id}`: a family's members, sizes, preferences, needs, and wishes. Returns 404 once the family is claimed.
-  - `POST /families/{id}/claim`: takes the giver's name, email, and phone; responds with the giver's private link. Returns 409 if the family is already claimed or the email has already claimed a family.
-  - `GET /claims/{token}`: the giver's private view of their family.
+  - `GET /`: unclaimed households, each shown as "Household N" with its kind and member labels.
+  - `GET /households/{id}`: a household's members, sizes, preferences, needs, and wishes. Returns 404 once the household is claimed.
+  - `POST /households/{id}/claim`: takes the giver's name, email, and phone; responds with the giver's private link. Returns 409 if the household is already claimed or the email has already claimed a household.
+  - `GET /claims/{token}`: the giver's private view of their household.
 - Admin routes (session required):
   - `GET /login`, `POST /login`, `POST /logout`.
-  - `GET /admin`: every family with its claim status.
-  - `GET /admin/families/new`: one form for transcribing a family's intake sheets, with a section per member.
-  - `POST /admin/families`: creates a family with all its members and wishlist items in one transaction. Responds with the new family's ID.
-  - `GET /admin/families/{id}`: shows a family's members, its claim status, and the giver's contact details if claimed. It hosts the edit link and the release, new-link, and delete actions.
-  - `GET /admin/families/{id}/edit`: the new-family form, prefilled with the family's members and wishlists.
-  - `PUT /admin/families/{id}`: replaces a family's members and wishlist items in one transaction, with the same body as `POST /admin/families`. Members and items get new IDs. A claim on the family is kept.
-  - `DELETE /admin/families/{id}`: deletes an unclaimed family. Returns 409 while the family is claimed, so admins must release the claim first.
-  - `DELETE /admin/families/{id}/claim`: releases a claim.
-  - `POST /admin/families/{id}/claim/token`: replaces the giver's link token and returns the new link, so admins can re-send it.
+  - `GET /admin`: every household with its claim status.
+  - `GET /admin/households/new`: one form for transcribing a household's intake sheets, with a section per member.
+  - `POST /admin/households`: creates a household with all its members and wishlist items in one transaction. Responds with the new household's ID.
+  - `GET /admin/households/{id}`: shows a household's members, its claim status, and the giver's contact details if claimed. It hosts the edit link and the release, new-link, and delete actions.
+  - `GET /admin/households/{id}/edit`: the new-household form, prefilled with the household's members and wishlists.
+  - `PUT /admin/households/{id}`: replaces a household's kind, members, and wishlist items in one transaction, with the same body as `POST /admin/households`. Members and items get new IDs. A claim on the household is kept.
+  - `DELETE /admin/households/{id}`: deletes an unclaimed household. Returns 409 while the household is claimed, so admins must release the claim first.
+  - `DELETE /admin/households/{id}/claim`: releases a claim.
+  - `POST /admin/households/{id}/claim/token`: replaces the giver's link token and returns the new link, so admins can re-send it.
 
 ## Stack
 
@@ -161,7 +167,7 @@ The current Fly deployment is a stakeholder test drive. It runs without Litestre
 - `make secrets/hmac` / `make secrets/gcm`: generate random keys.
 - `make admin/build`: build the admin CLI to `./tmp/admin`.
 - `make server/deploy`: run `fly deploy --ha=false`. Do not deploy unless the user explicitly asks.
-  - `--ha=false` keeps the app on exactly one machine. Each Fly machine has its own SQLite file, so a second machine would split families, claims, and sessions between two databases. Never remove it, with or without Litestream.
+  - `--ha=false` keeps the app on exactly one machine. Each Fly machine has its own SQLite file, so a second machine would split households, claims, and sessions between two databases. Never remove it, with or without Litestream.
 
 ## Seeding admins
 

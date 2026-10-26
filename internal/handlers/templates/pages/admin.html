@@ -1,24 +1,27 @@
-{{ define "title" }}Families{{ end }}
+{{ define "title" }}Households{{ end }}
 {{ define "script-tags" }}{{ end }}
 {{ define "page-content" }}
   <div class="flex items-center justify-between gap-4">
-    <h1 class="text-2xl font-bold">Families</h1>
+    <h1 class="text-2xl font-bold">Households</h1>
     <a
-      href="/admin/families/new"
+      href="/admin/households/new"
       class="inline-flex items-center justify-center rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-      >New family</a
+      >New household</a
     >
   </div>
-  {{ if .Families }}
+  {{ if .Households }}
     <ul class="mt-6 flex flex-col gap-4">
-      {{ range .Families }}
+      {{ range .Households }}
         <li>
           <a
-            href="/admin/families/{{ .ID }}"
+            href="/admin/households/{{ .ID }}"
             class="block rounded-xl bg-surface p-5 shadow-sm hover:outline-2 hover:outline-accent focus-visible:outline-2 focus-visible:outline-accent"
           >
             <div class="flex items-center justify-between gap-4">
-              <p class="text-lg font-semibold">Family {{ .ID }}</p>
+              <div>
+                <p class="text-lg font-semibold">Household {{ .ID }}</p>
+                <p class="text-sm text-muted">{{ .Kind.Label }}</p>
+              </div>
               {{ if .IsClaimed }}
                 <span
                   class="rounded-full bg-festive px-3 py-1 text-xs font-semibold text-on-accent"
@@ -50,9 +53,9 @@
     </ul>
   {{ else }}
     <div class="flex flex-col items-center gap-1 pt-16 text-center">
-      <p class="text-lg font-semibold">No families yet</p>
+      <p class="text-lg font-semibold">No households yet</p>
       <p class="text-muted">
-        Add a family from its intake sheets to get started.
+        Add a household from its intake sheets to get started.
       </p>
     </div>
   {{ end }}

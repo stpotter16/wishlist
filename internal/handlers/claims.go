@@ -14,11 +14,11 @@ import (
 	"github.com/stpotter16/wishlist/internal/types"
 )
 
-func familyClaimPost(s store.Store) http.HandlerFunc {
+func householdClaimPost(s store.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		familyID, err := strconv.Atoi(r.PathValue("id"))
+		householdID, err := strconv.Atoi(r.PathValue("id"))
 		if err != nil {
-			http.Error(w, "This family is no longer available.", http.StatusNotFound)
+			http.Error(w, "This household is no longer available.", http.StatusNotFound)
 			return
 		}
 
@@ -30,28 +30,28 @@ func familyClaimPost(s store.Store) http.HandlerFunc {
 
 		token, tokenHash, err := auth.NewAccessToken()
 		if err != nil {
-			log.Printf("familyClaimPost: failed to generate access token: %v", err)
+			log.Printf("householdClaimPost: failed to generate access token: %v", err)
 			http.Error(w, "Server issue - try again later", http.StatusInternalServerError)
 			return
 		}
 
 		err = s.CreateClaim(r.Context(), types.NewClaim{
-			FamilyID:        familyID,
+			HouseholdID:     householdID,
 			Giver:           giver,
 			AccessTokenHash: tokenHash,
 		})
 		switch {
-		case errors.Is(err, store.ErrFamilyNotFound):
-			http.Error(w, "This family is no longer available.", http.StatusNotFound)
+		case errors.Is(err, store.ErrHouseholdNotFound):
+			http.Error(w, "This household is no longer available.", http.StatusNotFound)
 			return
-		case errors.Is(err, store.ErrFamilyAlreadyClaimed):
-			http.Error(w, "Another giver has already adopted this family.", http.StatusConflict)
+		case errors.Is(err, store.ErrHouseholdAlreadyClaimed):
+			http.Error(w, "Another giver has already adopted this household.", http.StatusConflict)
 			return
 		case errors.Is(err, store.ErrEmailAlreadyClaimed):
-			http.Error(w, "This email address has already adopted a family.", http.StatusConflict)
+			http.Error(w, "This email address has already adopted a household.", http.StatusConflict)
 			return
 		case err != nil:
-			log.Printf("familyClaimPost: failed to claim family %d: %v", familyID, err)
+			log.Printf("householdClaimPost: failed to claim household %d: %v", householdID, err)
 			http.Error(w, "Server issue - try again later", http.StatusInternalServerError)
 			return
 		}
@@ -62,7 +62,7 @@ func familyClaimPost(s store.Store) http.HandlerFunc {
 		if err := json.NewEncoder(w).Encode(struct {
 			URL string `json:"url"`
 		}{URL: "/claims/" + token}); err != nil {
-			log.Printf("familyClaimPost: failed to write response: %v", err)
+			log.Printf("householdClaimPost: failed to write response: %v", err)
 		}
 	}
 }
@@ -73,7 +73,7 @@ func claimGet(s store.Store) http.HandlerFunc {
 			ParseFS(
 				templateFS,
 				"templates/layouts/base.html",
-				"templates/partials/family-members.html",
+				"templates/partials/household-members.html",
 				"templates/pages/claim.html",
 			))
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -89,23 +89,23 @@ func claimGet(s store.Store) http.HandlerFunc {
 			return
 		}
 
-		family, err := s.GetClaimedFamily(r.Context(), auth.HashAccessToken(r.PathValue("token")))
-		if errors.Is(err, store.ErrClaimNotFound) || errors.Is(err, store.ErrFamilyNotFound) {
+		household, err := s.GetClaimedHousehold(r.Context(), auth.HashAccessToken(r.PathValue("token")))
+		if errors.Is(err, store.ErrClaimNotFound) || errors.Is(err, store.ErrHouseholdNotFound) {
 			renderAppError(w, r, http.StatusNotFound)
 			return
 		}
 		if err != nil {
-			log.Printf("claimGet: failed to get claimed family: %v", err)
+			log.Printf("claimGet: failed to get claimed household: %v", err)
 			renderAppError(w, r, http.StatusInternalServerError)
 			return
 		}
 
 		props := struct {
 			viewProps
-			Family types.Family
+			Household types.Household
 		}{
 			viewProps: viewProps{CspNonce: nonce},
-			Family:    family,
+			Household: household,
 		}
 
 		if err := t.Execute(w, props); err != nil {

@@ -9,21 +9,21 @@ import (
 	"testing"
 )
 
-func TestFamiliesListsOnlyUnclaimedFamilies(t *testing.T) {
+func TestHouseholdsListsOnlyUnclaimedHouseholds(t *testing.T) {
 	server, d := newTestServer(t)
 
-	// Family 1 is unclaimed. Family 2 is claimed.
+	// Household 1 is unclaimed. Household 2 is claimed.
 	if _, err := d.Exec(context.Background(), `
-	INSERT INTO family (id, created_time, last_modified_time) VALUES
-		(1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-		(2, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
-	INSERT INTO family_member
-		(family_id, label, created_time, last_modified_time)
+	INSERT INTO household (id, kind, created_time, last_modified_time) VALUES
+		(1, 'family', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+		(2, 'family', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+	INSERT INTO household_member
+		(household_id, first_name, label, created_time, last_modified_time)
 	VALUES
-		(1, 'Mom', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-		(2, 'Dad', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+		(1, 'Maria', 'Mom', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+		(2, 'Dan', 'Dad', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
 	INSERT INTO claim (
-		family_id, giver_name, giver_email, giver_phone, access_token_hash,
+		household_id, giver_name, giver_email, giver_phone, access_token_hash,
 		created_time
 	) VALUES (
 		2, 'Giver', 'giver@example.com', '555-0100', 'dummy-hash',
@@ -41,24 +41,24 @@ func TestFamiliesListsOnlyUnclaimedFamilies(t *testing.T) {
 		t.Fatalf("status=%d, want=%d", got, want)
 	}
 	body := rec.Body.String()
-	if !strings.Contains(body, "Family 1") {
-		t.Errorf("body is missing unclaimed family's label")
+	if !strings.Contains(body, "Household 1") {
+		t.Errorf("body is missing unclaimed household's label")
 	}
 	if !strings.Contains(body, "Mom") {
-		t.Errorf("body is missing unclaimed family's member label")
+		t.Errorf("body is missing unclaimed household's member label")
 	}
-	if !strings.Contains(body, `href="/families/1"`) {
-		t.Errorf("body is missing link to unclaimed family")
+	if !strings.Contains(body, `href="/households/1"`) {
+		t.Errorf("body is missing link to unclaimed household")
 	}
-	if strings.Contains(body, "Family 2") {
-		t.Errorf("body contains claimed family's label")
+	if strings.Contains(body, "Household 2") {
+		t.Errorf("body contains claimed household's label")
 	}
 	if strings.Contains(body, "Dad") {
-		t.Errorf("body contains claimed family's member label")
+		t.Errorf("body contains claimed household's member label")
 	}
 }
 
-func TestFamiliesShowsEmptyState(t *testing.T) {
+func TestHouseholdsShowsEmptyState(t *testing.T) {
 	server, _ := newTestServer(t)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -68,12 +68,12 @@ func TestFamiliesShowsEmptyState(t *testing.T) {
 	if got, want := rec.Code, http.StatusOK; got != want {
 		t.Fatalf("status=%d, want=%d", got, want)
 	}
-	if got, want := rec.Body.String(), "No families available"; !strings.Contains(got, want) {
+	if got, want := rec.Body.String(), "No households available"; !strings.Contains(got, want) {
 		t.Errorf("body is missing %q", want)
 	}
 }
 
-func TestFamiliesErrorPageOmitsAdminNav(t *testing.T) {
+func TestHouseholdsErrorPageOmitsAdminNav(t *testing.T) {
 	server, d := newTestServer(t)
 
 	// Dropping a table the listing query reads forces the handler's error path.
@@ -97,21 +97,21 @@ func TestFamiliesErrorPageOmitsAdminNav(t *testing.T) {
 	}
 }
 
-func TestFamilyShowsMembersAndWishlists(t *testing.T) {
+func TestHouseholdShowsMembersAndWishlists(t *testing.T) {
 	server, d := newTestServer(t)
 
 	if _, err := d.Exec(context.Background(), `
-	INSERT INTO family (id, created_time, last_modified_time) VALUES
-		(1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
-	INSERT INTO family_member (
-		id, family_id, label, age, shirt_size, prefers_unscented,
+	INSERT INTO household (id, kind, created_time, last_modified_time) VALUES
+		(1, 'family', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+	INSERT INTO household_member (
+		id, household_id, first_name, label, age, shirt_size, prefers_unscented,
 		created_time, last_modified_time
 	) VALUES (
-		10, 1, 'Child, 7', 7, 'Youth M', 1,
+		10, 1, 'Sofia', 'Child, 7', 7, 'Youth M', 1,
 		'2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'
 	);
 	INSERT INTO wishlist_item (
-		family_member_id, kind, name, created_time, last_modified_time
+		household_member_id, kind, name, created_time, last_modified_time
 	) VALUES
 		(10, 'need', 'Winter coat', '2026-01-01T00:00:00Z',
 			'2026-01-01T00:00:00Z'),
@@ -121,7 +121,7 @@ func TestFamilyShowsMembersAndWishlists(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 
-	req := httptest.NewRequest(http.MethodGet, "/families/1", nil)
+	req := httptest.NewRequest(http.MethodGet, "/households/1", nil)
 	rec := httptest.NewRecorder()
 	server.ServeHTTP(rec, req)
 
@@ -129,6 +129,9 @@ func TestFamilyShowsMembersAndWishlists(t *testing.T) {
 		t.Fatalf("status=%d, want=%d", got, want)
 	}
 	body := rec.Body.String()
+	if !strings.Contains(body, "Sofia") {
+		t.Errorf("body is missing member name")
+	}
 	if !strings.Contains(body, "Child, 7") {
 		t.Errorf("body is missing member label")
 	}
@@ -150,37 +153,37 @@ func TestFamilyShowsMembersAndWishlists(t *testing.T) {
 	}
 }
 
-func TestFamilyNotFound(t *testing.T) {
+func TestHouseholdNotFound(t *testing.T) {
 	for _, tt := range []struct {
 		explanation string
 		path        string
 	}{
 		{
-			"family that doesn't exist is not found",
-			"/families/99",
+			"household that doesn't exist is not found",
+			"/households/99",
 		},
 		{
-			"claimed family is not found",
-			"/families/2",
+			"claimed household is not found",
+			"/households/2",
 		},
 		{
-			"non-numeric family ID is not found",
-			"/families/abc",
+			"non-numeric household ID is not found",
+			"/households/abc",
 		},
 	} {
 		t.Run(fmt.Sprintf("%s [%s]", tt.explanation, tt.path), func(t *testing.T) {
 			server, d := newTestServer(t)
 
-			// Family 2 is claimed.
+			// Household 2 is claimed.
 			if _, err := d.Exec(context.Background(), `
-			INSERT INTO family (id, created_time, last_modified_time) VALUES
-				(2, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
-			INSERT INTO family_member
-				(family_id, label, created_time, last_modified_time)
+			INSERT INTO household (id, kind, created_time, last_modified_time) VALUES
+				(2, 'family', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+			INSERT INTO household_member
+				(household_id, first_name, label, created_time, last_modified_time)
 			VALUES
-				(2, 'Dad', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+				(2, 'Dan', 'Dad', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
 			INSERT INTO claim (
-				family_id, giver_name, giver_email, giver_phone,
+				household_id, giver_name, giver_email, giver_phone,
 				access_token_hash, created_time
 			) VALUES (
 				2, 'Giver', 'giver@example.com', '555-0100', 'dummy-hash',

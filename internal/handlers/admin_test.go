@@ -15,22 +15,22 @@ import (
 	"github.com/stpotter16/wishlist/internal/store/db"
 )
 
-func TestAdminListsAllFamiliesWithClaimStatus(t *testing.T) {
+func TestAdminListsAllHouseholdsWithClaimStatus(t *testing.T) {
 	server, d := newTestServer(t)
 	cookie := loginAsAdmin(t, server, d)
 
-	// Family 1 is unclaimed. Family 2 is claimed.
+	// Household 1 is unclaimed. Household 2 is claimed.
 	if _, err := d.Exec(context.Background(), `
-	INSERT INTO family (id, created_time, last_modified_time) VALUES
-		(1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-		(2, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
-	INSERT INTO family_member
-		(family_id, label, created_time, last_modified_time)
+	INSERT INTO household (id, kind, created_time, last_modified_time) VALUES
+		(1, 'family', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+		(2, 'family', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+	INSERT INTO household_member
+		(household_id, first_name, label, created_time, last_modified_time)
 	VALUES
-		(1, 'Mom', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-		(2, 'Dad', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+		(1, 'Maria', 'Mom', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+		(2, 'Dan', 'Dad', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
 	INSERT INTO claim (
-		family_id, giver_name, giver_email, giver_phone, access_token_hash,
+		household_id, giver_name, giver_email, giver_phone, access_token_hash,
 		created_time
 	) VALUES (
 		2, 'Giver', 'giver@example.com', '555-0100', 'dummy-hash',
@@ -49,11 +49,11 @@ func TestAdminListsAllFamiliesWithClaimStatus(t *testing.T) {
 		t.Fatalf("status=%d, want=%d", got, want)
 	}
 	body := rec.Body.String()
-	if !strings.Contains(body, "Family 1") {
-		t.Errorf("body is missing unclaimed family")
+	if !strings.Contains(body, "Household 1") {
+		t.Errorf("body is missing unclaimed household")
 	}
-	if !strings.Contains(body, "Family 2") {
-		t.Errorf("body is missing claimed family")
+	if !strings.Contains(body, "Household 2") {
+		t.Errorf("body is missing claimed household")
 	}
 	if !strings.Contains(body, "Claimed") {
 		t.Errorf("body is missing claimed status")
@@ -63,11 +63,11 @@ func TestAdminListsAllFamiliesWithClaimStatus(t *testing.T) {
 	}
 }
 
-func TestAdminNewFamilyPageRenders(t *testing.T) {
+func TestAdminNewHouseholdPageRenders(t *testing.T) {
 	server, d := newTestServer(t)
 	cookie := loginAsAdmin(t, server, d)
 
-	req := httptest.NewRequest(http.MethodGet, "/admin/families/new", nil)
+	req := httptest.NewRequest(http.MethodGet, "/admin/households/new", nil)
 	req.AddCookie(cookie)
 	rec := httptest.NewRecorder()
 	server.ServeHTTP(rec, req)
@@ -79,16 +79,16 @@ func TestAdminNewFamilyPageRenders(t *testing.T) {
 	if !strings.Contains(body, `data-submit-method="POST"`) {
 		t.Errorf("form doesn't submit with POST")
 	}
-	if !strings.Contains(body, `data-submit-url="/admin/families"`) {
+	if !strings.Contains(body, `data-submit-url="/admin/households"`) {
 		t.Errorf("form doesn't submit to the create endpoint")
 	}
 }
 
-func TestAdminCreateFamilyRequiresLogin(t *testing.T) {
+func TestAdminCreateHouseholdRequiresLogin(t *testing.T) {
 	server, _ := newTestServer(t)
 
-	req := httptest.NewRequest(http.MethodPost, "/admin/families", strings.NewReader(
-		`{"members": [{"label": "Mom"}]}`))
+	req := httptest.NewRequest(http.MethodPost, "/admin/households", strings.NewReader(
+		`{"kind": "single", "members": [{"firstName": "Rosa", "lastInitial": "M"}]}`))
 	rec := httptest.NewRecorder()
 	server.ServeHTTP(rec, req)
 
@@ -97,19 +97,25 @@ func TestAdminCreateFamilyRequiresLogin(t *testing.T) {
 	}
 }
 
-func TestAdminCreateFamilyPublishesIt(t *testing.T) {
+func TestAdminCreateHouseholdPublishesIt(t *testing.T) {
 	server, d := newTestServer(t)
 	cookie := loginAsAdmin(t, server, d)
 
-	// The server labels members itself: the first is always Mom, with no age
-	// or gender, and the rest are children labeled by age.
-	req := httptest.NewRequest(http.MethodPost, "/admin/families", strings.NewReader(`{
+	// The server labels members itself: a family's first member is always
+	// Mom, with no age or gender, and the rest are children labeled by age and
+	// named by first name only.
+	req := httptest.NewRequest(http.MethodPost, "/admin/households", strings.NewReader(`{
+		"kind": "family",
 		"members": [{
+			"firstName": " Maria ",
+			"lastInitial": "g.",
 			"label": "Grandma",
 			"age": 40,
 			"gender": "F",
 			"needs": ["Winter coat", "  ", ""]
 		}, {
+			"firstName": "Sofia",
+			"lastInitial": "R",
 			"label": "Ignored",
 			"age": 7,
 			"gender": "Girl",
@@ -129,12 +135,28 @@ func TestAdminCreateFamilyPublishesIt(t *testing.T) {
 		t.Fatalf("body=%s, want=%s", got, want)
 	}
 
-	var momLabel, momGender string
+	var kind string
+	if err := d.QueryRow(context.Background(),
+		`SELECT kind FROM household WHERE id = 1`,
+	).Scan(&kind); err != nil {
+		t.Fatalf("read household: %v", err)
+	}
+	if got, want := kind, "family"; got != want {
+		t.Errorf("kind=%q, want=%q", got, want)
+	}
+
+	var momFirstName, momLastInitial, momLabel, momGender string
 	var momAge sql.NullInt64
 	if err := d.QueryRow(context.Background(),
-		`SELECT label, age, gender FROM family_member ORDER BY id LIMIT 1`,
-	).Scan(&momLabel, &momAge, &momGender); err != nil {
+		`SELECT first_name, last_initial, label, age, gender FROM household_member ORDER BY id LIMIT 1`,
+	).Scan(&momFirstName, &momLastInitial, &momLabel, &momAge, &momGender); err != nil {
 		t.Fatalf("read mom: %v", err)
+	}
+	if got, want := momFirstName, "Maria"; got != want {
+		t.Errorf("first member first name=%q, want=%q", got, want)
+	}
+	if got, want := momLastInitial, "G"; got != want {
+		t.Errorf("first member last initial=%q, want=%q", got, want)
 	}
 	if got, want := momLabel, "Mom"; got != want {
 		t.Errorf("first member label=%q, want=%q", got, want)
@@ -146,12 +168,18 @@ func TestAdminCreateFamilyPublishesIt(t *testing.T) {
 		t.Errorf("first member gender=%q, want=%q", got, want)
 	}
 
-	var childLabel, childGender string
+	var childFirstName, childLastInitial, childLabel, childGender string
 	var childAge int
 	if err := d.QueryRow(context.Background(),
-		`SELECT label, age, gender FROM family_member ORDER BY id LIMIT 1 OFFSET 1`,
-	).Scan(&childLabel, &childAge, &childGender); err != nil {
+		`SELECT first_name, last_initial, label, age, gender FROM household_member ORDER BY id LIMIT 1 OFFSET 1`,
+	).Scan(&childFirstName, &childLastInitial, &childLabel, &childAge, &childGender); err != nil {
 		t.Fatalf("read child: %v", err)
+	}
+	if got, want := childFirstName, "Sofia"; got != want {
+		t.Errorf("child first name=%q, want=%q", got, want)
+	}
+	if got, want := childLastInitial, ""; got != want {
+		t.Errorf("child last initial=%q, want=%q", got, want)
 	}
 	if got, want := childLabel, "Child, 7"; got != want {
 		t.Errorf("child label=%q, want=%q", got, want)
@@ -163,8 +191,8 @@ func TestAdminCreateFamilyPublishesIt(t *testing.T) {
 		t.Errorf("child gender=%q, want=%q", got, want)
 	}
 
-	// The new family appears on its public page.
-	req = httptest.NewRequest(http.MethodGet, "/families/1", nil)
+	// The new household appears on its public page.
+	req = httptest.NewRequest(http.MethodGet, "/households/1", nil)
 	rec = httptest.NewRecorder()
 	server.ServeHTTP(rec, req)
 
@@ -172,15 +200,62 @@ func TestAdminCreateFamilyPublishesIt(t *testing.T) {
 		t.Fatalf("public status=%d, want=%d", got, want)
 	}
 	body := rec.Body.String()
-	if !strings.Contains(body, "Winter coat") {
-		t.Errorf("public page is missing need")
-	}
-	if !strings.Contains(body, "LEGO set") {
-		t.Errorf("public page is missing wish")
+	for _, want := range []string{"Family", "Maria G.", "Sofia", "Winter coat", "LEGO set"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("public page is missing %q", want)
+		}
 	}
 }
 
-func TestAdminCreateFamilyRejectsInvalidInput(t *testing.T) {
+func TestAdminCreateSingleWomanHousehold(t *testing.T) {
+	server, d := newTestServer(t)
+	cookie := loginAsAdmin(t, server, d)
+
+	req := httptest.NewRequest(http.MethodPost, "/admin/households", strings.NewReader(`{
+		"kind": "single",
+		"members": [{
+			"firstName": "Rosa",
+			"lastInitial": "M",
+			"needs": ["Slippers"]
+		}]
+	}`))
+	req.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	server.ServeHTTP(rec, req)
+
+	if got, want := rec.Code, http.StatusCreated; got != want {
+		t.Fatalf("status=%d, want=%d, body=%q", got, want, rec.Body.String())
+	}
+
+	// The listing shows only her anonymous label. Her name appears on the
+	// household's own page.
+	req = httptest.NewRequest(http.MethodGet, "/", nil)
+	rec = httptest.NewRecorder()
+	server.ServeHTTP(rec, req)
+
+	body := rec.Body.String()
+	for _, want := range []string{"Household 1", "Single woman", "Woman"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("listing is missing %q", want)
+		}
+	}
+	if strings.Contains(body, "Rosa") {
+		t.Errorf("listing shows her name")
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/households/1", nil)
+	rec = httptest.NewRecorder()
+	server.ServeHTTP(rec, req)
+
+	body = rec.Body.String()
+	for _, want := range []string{"Single woman", "Rosa M.", "Woman", "Slippers"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("household page is missing %q", want)
+		}
+	}
+}
+
+func TestAdminCreateHouseholdRejectsInvalidInput(t *testing.T) {
 	for _, tt := range []struct {
 		explanation string
 		body        string
@@ -190,27 +265,63 @@ func TestAdminCreateFamilyRejectsInvalidInput(t *testing.T) {
 			`not json`,
 		},
 		{
-			"family with no members is rejected",
-			`{"members": []}`,
+			"household without a kind is rejected",
+			`{"members": [{"firstName": "Rosa", "lastInitial": "M"}]}`,
+		},
+		{
+			"household with an unknown kind is rejected",
+			`{"kind": "couple", "members": [{"firstName": "Rosa", "lastInitial": "M"}]}`,
+		},
+		{
+			"single woman's household with no members is rejected",
+			`{"kind": "single", "members": []}`,
+		},
+		{
+			"single woman's household with a child is rejected",
+			`{"kind": "single", "members": [{"firstName": "Rosa", "lastInitial": "M"}, {"firstName": "Sofia", "age": 7}]}`,
+		},
+		{
+			"family without a child is rejected",
+			`{"kind": "family", "members": [{"firstName": "Maria", "lastInitial": "G"}]}`,
+		},
+		{
+			"head without a first name is rejected",
+			`{"kind": "single", "members": [{"firstName": "  ", "lastInitial": "M"}]}`,
+		},
+		{
+			"head without a last initial is rejected",
+			`{"kind": "single", "members": [{"firstName": "Rosa"}]}`,
+		},
+		{
+			"head with a full last name is rejected",
+			`{"kind": "single", "members": [{"firstName": "Rosa", "lastInitial": "Martinez"}]}`,
+		},
+		{
+			"head with a last initial that isn't a letter is rejected",
+			`{"kind": "single", "members": [{"firstName": "Rosa", "lastInitial": "7"}]}`,
+		},
+		{
+			"child without a first name is rejected",
+			`{"kind": "family", "members": [{"firstName": "Maria", "lastInitial": "G"}, {"age": 7}]}`,
 		},
 		{
 			"child without an age is rejected",
-			`{"members": [{}, {"gender": "Girl"}]}`,
+			`{"kind": "family", "members": [{"firstName": "Maria", "lastInitial": "G"}, {"firstName": "Sofia", "gender": "Girl"}]}`,
 		},
 		{
 			"child with a negative age is rejected",
-			`{"members": [{}, {"age": -1}]}`,
+			`{"kind": "family", "members": [{"firstName": "Maria", "lastInitial": "G"}, {"firstName": "Sofia", "age": -1}]}`,
 		},
 		{
 			"child with an implausible age is rejected",
-			`{"members": [{}, {"age": 131}]}`,
+			`{"kind": "family", "members": [{"firstName": "Maria", "lastInitial": "G"}, {"firstName": "Sofia", "age": 131}]}`,
 		},
 	} {
 		t.Run(fmt.Sprintf("%s [%s]", tt.explanation, tt.body), func(t *testing.T) {
 			server, d := newTestServer(t)
 			cookie := loginAsAdmin(t, server, d)
 
-			req := httptest.NewRequest(http.MethodPost, "/admin/families", strings.NewReader(tt.body))
+			req := httptest.NewRequest(http.MethodPost, "/admin/households", strings.NewReader(tt.body))
 			req.AddCookie(cookie)
 			rec := httptest.NewRecorder()
 			server.ServeHTTP(rec, req)
@@ -222,24 +333,24 @@ func TestAdminCreateFamilyRejectsInvalidInput(t *testing.T) {
 	}
 }
 
-// seedClaimedAndUnclaimedFamilies seeds family 1, claimed by Pat Doe, whose
-// private link token is "old-token"; family 2, unclaimed; and family 3, with
+// seedClaimedAndUnclaimedHouseholds seeds household 1, claimed by Pat Doe, whose
+// private link token is "old-token"; household 2, unclaimed; and household 3, with
 // no members.
-func seedClaimedAndUnclaimedFamilies(t *testing.T, d db.DB) {
+func seedClaimedAndUnclaimedHouseholds(t *testing.T, d db.DB) {
 	t.Helper()
 
 	if _, err := d.Exec(context.Background(), `
-	INSERT INTO family (id, created_time, last_modified_time) VALUES
-		(1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-		(2, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-		(3, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
-	INSERT INTO family_member
-		(family_id, label, created_time, last_modified_time)
+	INSERT INTO household (id, kind, created_time, last_modified_time) VALUES
+		(1, 'family', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+		(2, 'family', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+		(3, 'family', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+	INSERT INTO household_member
+		(household_id, first_name, label, created_time, last_modified_time)
 	VALUES
-		(1, 'Mom', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-		(2, 'Dad', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+		(1, 'Maria', 'Mom', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+		(2, 'Dan', 'Dad', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
 	INSERT INTO claim (
-		family_id, giver_name, giver_email, giver_phone, access_token_hash,
+		household_id, giver_name, giver_email, giver_phone, access_token_hash,
 		created_time
 	) VALUES (
 		1, 'Pat Doe', 'giver@example.com', '555-0100', ?,
@@ -250,26 +361,26 @@ func seedClaimedAndUnclaimedFamilies(t *testing.T, d db.DB) {
 	}
 }
 
-func TestAdminDashboardLinksToFamilyPages(t *testing.T) {
+func TestAdminDashboardLinksToHouseholdPages(t *testing.T) {
 	server, d := newTestServer(t)
 	cookie := loginAsAdmin(t, server, d)
-	seedClaimedAndUnclaimedFamilies(t, d)
+	seedClaimedAndUnclaimedHouseholds(t, d)
 
 	req := httptest.NewRequest(http.MethodGet, "/admin", nil)
 	req.AddCookie(cookie)
 	rec := httptest.NewRecorder()
 	server.ServeHTTP(rec, req)
 
-	if got, want := rec.Body.String(), `href="/admin/families/1"`; !strings.Contains(got, want) {
+	if got, want := rec.Body.String(), `href="/admin/households/1"`; !strings.Contains(got, want) {
 		t.Errorf("body is missing %q", want)
 	}
 }
 
-func TestAdminFamilyPageRequiresLogin(t *testing.T) {
+func TestAdminHouseholdPageRequiresLogin(t *testing.T) {
 	server, d := newTestServer(t)
-	seedClaimedAndUnclaimedFamilies(t, d)
+	seedClaimedAndUnclaimedHouseholds(t, d)
 
-	req := httptest.NewRequest(http.MethodGet, "/admin/families/1", nil)
+	req := httptest.NewRequest(http.MethodGet, "/admin/households/1", nil)
 	rec := httptest.NewRecorder()
 	server.ServeHTTP(rec, req)
 
@@ -278,12 +389,12 @@ func TestAdminFamilyPageRequiresLogin(t *testing.T) {
 	}
 }
 
-func TestAdminFamilyPageShowsGiverOfClaimedFamily(t *testing.T) {
+func TestAdminHouseholdPageShowsGiverOfClaimedHousehold(t *testing.T) {
 	server, d := newTestServer(t)
 	cookie := loginAsAdmin(t, server, d)
-	seedClaimedAndUnclaimedFamilies(t, d)
+	seedClaimedAndUnclaimedHouseholds(t, d)
 
-	req := httptest.NewRequest(http.MethodGet, "/admin/families/1", nil)
+	req := httptest.NewRequest(http.MethodGet, "/admin/households/1", nil)
 	req.AddCookie(cookie)
 	rec := httptest.NewRecorder()
 	server.ServeHTTP(rec, req)
@@ -292,6 +403,9 @@ func TestAdminFamilyPageShowsGiverOfClaimedFamily(t *testing.T) {
 		t.Fatalf("status=%d, want=%d", got, want)
 	}
 	body := rec.Body.String()
+	if !strings.Contains(body, "Maria") {
+		t.Errorf("body is missing member name")
+	}
 	if !strings.Contains(body, "Pat Doe") {
 		t.Errorf("body is missing giver name")
 	}
@@ -312,12 +426,12 @@ func TestAdminFamilyPageShowsGiverOfClaimedFamily(t *testing.T) {
 	}
 }
 
-func TestAdminFamilyPageOfUnclaimedFamily(t *testing.T) {
+func TestAdminHouseholdPageOfUnclaimedHousehold(t *testing.T) {
 	server, d := newTestServer(t)
 	cookie := loginAsAdmin(t, server, d)
-	seedClaimedAndUnclaimedFamilies(t, d)
+	seedClaimedAndUnclaimedHouseholds(t, d)
 
-	req := httptest.NewRequest(http.MethodGet, "/admin/families/2", nil)
+	req := httptest.NewRequest(http.MethodGet, "/admin/households/2", nil)
 	req.AddCookie(cookie)
 	rec := httptest.NewRecorder()
 	server.ServeHTTP(rec, req)
@@ -326,7 +440,7 @@ func TestAdminFamilyPageOfUnclaimedFamily(t *testing.T) {
 		t.Fatalf("status=%d, want=%d", got, want)
 	}
 	body := rec.Body.String()
-	if !strings.Contains(body, `href="/families/2"`) {
+	if !strings.Contains(body, `href="/households/2"`) {
 		t.Errorf("body is missing link to public page")
 	}
 	if strings.Contains(body, "Release claim") {
@@ -334,12 +448,12 @@ func TestAdminFamilyPageOfUnclaimedFamily(t *testing.T) {
 	}
 }
 
-func TestAdminFamilyPageOfMemberlessFamily(t *testing.T) {
+func TestAdminHouseholdPageOfMemberlessHousehold(t *testing.T) {
 	server, d := newTestServer(t)
 	cookie := loginAsAdmin(t, server, d)
-	seedClaimedAndUnclaimedFamilies(t, d)
+	seedClaimedAndUnclaimedHouseholds(t, d)
 
-	req := httptest.NewRequest(http.MethodGet, "/admin/families/3", nil)
+	req := httptest.NewRequest(http.MethodGet, "/admin/households/3", nil)
 	req.AddCookie(cookie)
 	rec := httptest.NewRecorder()
 	server.ServeHTTP(rec, req)
@@ -352,18 +466,18 @@ func TestAdminFamilyPageOfMemberlessFamily(t *testing.T) {
 	}
 }
 
-func TestAdminFamilyPageNotFound(t *testing.T) {
+func TestAdminHouseholdPageNotFound(t *testing.T) {
 	for _, tt := range []struct {
 		explanation string
 		path        string
 	}{
 		{
-			"family that doesn't exist is not found",
-			"/admin/families/99",
+			"household that doesn't exist is not found",
+			"/admin/households/99",
 		},
 		{
-			"non-numeric family ID is not found",
-			"/admin/families/abc",
+			"non-numeric household ID is not found",
+			"/admin/households/abc",
 		},
 	} {
 		t.Run(fmt.Sprintf("%s [%s]", tt.explanation, tt.path), func(t *testing.T) {
@@ -382,12 +496,12 @@ func TestAdminFamilyPageNotFound(t *testing.T) {
 	}
 }
 
-func TestAdminReleaseClaimReturnsFamilyToPublic(t *testing.T) {
+func TestAdminReleaseClaimReturnsHouseholdToPublic(t *testing.T) {
 	server, d := newTestServer(t)
 	cookie := loginAsAdmin(t, server, d)
-	seedClaimedAndUnclaimedFamilies(t, d)
+	seedClaimedAndUnclaimedHouseholds(t, d)
 
-	req := httptest.NewRequest(http.MethodDelete, "/admin/families/1/claim", nil)
+	req := httptest.NewRequest(http.MethodDelete, "/admin/households/1/claim", nil)
 	req.AddCookie(cookie)
 	rec := httptest.NewRecorder()
 	server.ServeHTTP(rec, req)
@@ -396,7 +510,7 @@ func TestAdminReleaseClaimReturnsFamilyToPublic(t *testing.T) {
 		t.Fatalf("release status=%d, want=%d", got, want)
 	}
 
-	req = httptest.NewRequest(http.MethodGet, "/families/1", nil)
+	req = httptest.NewRequest(http.MethodGet, "/households/1", nil)
 	rec = httptest.NewRecorder()
 	server.ServeHTTP(rec, req)
 	if got, want := rec.Code, http.StatusOK; got != want {
@@ -414,9 +528,9 @@ func TestAdminReleaseClaimReturnsFamilyToPublic(t *testing.T) {
 func TestAdminIssueNewLinkReplacesOldLink(t *testing.T) {
 	server, d := newTestServer(t)
 	cookie := loginAsAdmin(t, server, d)
-	seedClaimedAndUnclaimedFamilies(t, d)
+	seedClaimedAndUnclaimedHouseholds(t, d)
 
-	req := httptest.NewRequest(http.MethodPost, "/admin/families/1/claim/token", nil)
+	req := httptest.NewRequest(http.MethodPost, "/admin/households/1/claim/token", nil)
 	req.AddCookie(cookie)
 	rec := httptest.NewRecorder()
 	server.ServeHTTP(rec, req)
@@ -457,35 +571,35 @@ func TestAdminClaimActions(t *testing.T) {
 		{
 			"releasing a claim requires login",
 			http.MethodDelete,
-			"/admin/families/1/claim",
+			"/admin/households/1/claim",
 			false,
 			http.StatusUnauthorized,
 		},
 		{
 			"issuing a new link requires login",
 			http.MethodPost,
-			"/admin/families/1/claim/token",
+			"/admin/households/1/claim/token",
 			false,
 			http.StatusUnauthorized,
 		},
 		{
-			"releasing an unclaimed family is not found",
+			"releasing an unclaimed household is not found",
 			http.MethodDelete,
-			"/admin/families/2/claim",
+			"/admin/households/2/claim",
 			true,
 			http.StatusNotFound,
 		},
 		{
-			"issuing a link for an unclaimed family is not found",
+			"issuing a link for an unclaimed household is not found",
 			http.MethodPost,
-			"/admin/families/2/claim/token",
+			"/admin/households/2/claim/token",
 			true,
 			http.StatusNotFound,
 		},
 	} {
 		t.Run(fmt.Sprintf("%s [%s %s]", tt.explanation, tt.method, tt.path), func(t *testing.T) {
 			server, d := newTestServer(t)
-			seedClaimedAndUnclaimedFamilies(t, d)
+			seedClaimedAndUnclaimedHouseholds(t, d)
 
 			req := httptest.NewRequest(tt.method, tt.path, nil)
 			if tt.isLoggedIn {
@@ -501,25 +615,25 @@ func TestAdminClaimActions(t *testing.T) {
 	}
 }
 
-func TestAdminEditFamilyPageIsPrefilled(t *testing.T) {
+func TestAdminEditHouseholdPageIsPrefilled(t *testing.T) {
 	server, d := newTestServer(t)
 	cookie := loginAsAdmin(t, server, d)
 
 	if _, err := d.Exec(context.Background(), `
-	INSERT INTO family (id, created_time, last_modified_time) VALUES
-		(1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
-	INSERT INTO family_member (
-		id, family_id, label, age, shirt_size, prefers_unscented,
-		created_time, last_modified_time
+	INSERT INTO household (id, kind, created_time, last_modified_time) VALUES
+		(1, 'family', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+	INSERT INTO household_member (
+		id, household_id, first_name, last_initial, label, age, shirt_size,
+		prefers_unscented, created_time, last_modified_time
 	) VALUES (
-		9, 1, 'Mom', NULL, '', 0,
+		9, 1, 'Maria', 'G', 'Mom', NULL, '', 0,
 		'2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'
 	), (
-		10, 1, 'Child, 7', 7, 'Youth M', 1,
+		10, 1, 'Sofia', '', 'Child, 7', 7, 'Youth M', 1,
 		'2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'
 	);
 	INSERT INTO wishlist_item (
-		family_member_id, kind, name, created_time, last_modified_time
+		household_member_id, kind, name, created_time, last_modified_time
 	) VALUES
 		(10, 'need', 'Winter coat', '2026-01-01T00:00:00Z',
 			'2026-01-01T00:00:00Z'),
@@ -529,7 +643,7 @@ func TestAdminEditFamilyPageIsPrefilled(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 
-	req := httptest.NewRequest(http.MethodGet, "/admin/families/1/edit", nil)
+	req := httptest.NewRequest(http.MethodGet, "/admin/households/1/edit", nil)
 	req.AddCookie(cookie)
 	rec := httptest.NewRecorder()
 	server.ServeHTTP(rec, req)
@@ -541,8 +655,20 @@ func TestAdminEditFamilyPageIsPrefilled(t *testing.T) {
 	if !strings.Contains(body, `data-submit-method="PUT"`) {
 		t.Errorf("form doesn't submit with PUT")
 	}
-	if !strings.Contains(body, `data-submit-url="/admin/families/1"`) {
-		t.Errorf("form doesn't submit to the family")
+	if !strings.Contains(body, `data-submit-url="/admin/households/1"`) {
+		t.Errorf("form doesn't submit to the household")
+	}
+	if !regexp.MustCompile(`value="family"\s+checked`).MatchString(body) {
+		t.Errorf("form doesn't select the household's kind")
+	}
+	if !strings.Contains(body, `value="Maria"`) {
+		t.Errorf("form is missing mom's first name")
+	}
+	if !strings.Contains(body, `value="G"`) {
+		t.Errorf("form is missing mom's last initial")
+	}
+	if !strings.Contains(body, `value="Sofia"`) {
+		t.Errorf("form is missing the child's first name")
 	}
 	if !regexp.MustCompile(`data-member-heading[^>]*>\s*Child, 7\s*</h2>`).MatchString(body) {
 		t.Errorf("form is missing the child's heading")
@@ -561,13 +687,13 @@ func TestAdminEditFamilyPageIsPrefilled(t *testing.T) {
 	}
 }
 
-func TestAdminUpdateFamilyKeepsClaim(t *testing.T) {
+func TestAdminUpdateHouseholdKeepsClaim(t *testing.T) {
 	server, d := newTestServer(t)
 	cookie := loginAsAdmin(t, server, d)
-	seedClaimedAndUnclaimedFamilies(t, d)
+	seedClaimedAndUnclaimedHouseholds(t, d)
 
-	req := httptest.NewRequest(http.MethodPut, "/admin/families/1", strings.NewReader(
-		`{"members": [{"label": "Mom", "needs": ["Winter coat"]}]}`))
+	req := httptest.NewRequest(http.MethodPut, "/admin/households/1", strings.NewReader(
+		`{"kind": "single", "members": [{"firstName": "Rosa", "lastInitial": "M", "needs": ["Winter coat"]}]}`))
 	req.AddCookie(cookie)
 	rec := httptest.NewRecorder()
 	server.ServeHTTP(rec, req)
@@ -591,12 +717,12 @@ func TestAdminUpdateFamilyKeepsClaim(t *testing.T) {
 	}
 }
 
-func TestAdminDeleteUnclaimedFamily(t *testing.T) {
+func TestAdminDeleteUnclaimedHousehold(t *testing.T) {
 	server, d := newTestServer(t)
 	cookie := loginAsAdmin(t, server, d)
-	seedClaimedAndUnclaimedFamilies(t, d)
+	seedClaimedAndUnclaimedHouseholds(t, d)
 
-	req := httptest.NewRequest(http.MethodDelete, "/admin/families/2", nil)
+	req := httptest.NewRequest(http.MethodDelete, "/admin/households/2", nil)
 	req.AddCookie(cookie)
 	rec := httptest.NewRecorder()
 	server.ServeHTTP(rec, req)
@@ -605,7 +731,7 @@ func TestAdminDeleteUnclaimedFamily(t *testing.T) {
 		t.Fatalf("status=%d, want=%d", got, want)
 	}
 
-	req = httptest.NewRequest(http.MethodGet, "/admin/families/2", nil)
+	req = httptest.NewRequest(http.MethodGet, "/admin/households/2", nil)
 	req.AddCookie(cookie)
 	rec = httptest.NewRecorder()
 	server.ServeHTTP(rec, req)
@@ -614,27 +740,27 @@ func TestAdminDeleteUnclaimedFamily(t *testing.T) {
 	}
 }
 
-func TestAdminFamilyPageDeleteControls(t *testing.T) {
+func TestAdminHouseholdPageDeleteControls(t *testing.T) {
 	for _, tt := range []struct {
 		explanation      string
 		path             string
 		isDeleteExpected bool
 	}{
 		{
-			"claimed family asks to release before deleting",
-			"/admin/families/1",
+			"claimed household asks to release before deleting",
+			"/admin/households/1",
 			false,
 		},
 		{
-			"unclaimed family offers delete",
-			"/admin/families/2",
+			"unclaimed household offers delete",
+			"/admin/households/2",
 			true,
 		},
 	} {
 		t.Run(fmt.Sprintf("%s [%s]", tt.explanation, tt.path), func(t *testing.T) {
 			server, d := newTestServer(t)
 			cookie := loginAsAdmin(t, server, d)
-			seedClaimedAndUnclaimedFamilies(t, d)
+			seedClaimedAndUnclaimedHouseholds(t, d)
 
 			req := httptest.NewRequest(http.MethodGet, tt.path, nil)
 			req.AddCookie(cookie)
@@ -652,7 +778,7 @@ func TestAdminFamilyPageDeleteControls(t *testing.T) {
 	}
 }
 
-func TestAdminFamilyEditAndDeleteErrors(t *testing.T) {
+func TestAdminHouseholdEditAndDeleteErrors(t *testing.T) {
 	for _, tt := range []struct {
 		explanation string
 		method      string
@@ -664,7 +790,7 @@ func TestAdminFamilyEditAndDeleteErrors(t *testing.T) {
 		{
 			"edit page requires login",
 			http.MethodGet,
-			"/admin/families/2/edit",
+			"/admin/households/2/edit",
 			"",
 			false,
 			http.StatusTemporaryRedirect,
@@ -672,55 +798,55 @@ func TestAdminFamilyEditAndDeleteErrors(t *testing.T) {
 		{
 			"updating requires login",
 			http.MethodPut,
-			"/admin/families/2",
-			`{"members": [{"label": "Mom"}]}`,
+			"/admin/households/2",
+			`{"kind": "single", "members": [{"firstName": "Rosa", "lastInitial": "M"}]}`,
 			false,
 			http.StatusUnauthorized,
 		},
 		{
 			"deleting requires login",
 			http.MethodDelete,
-			"/admin/families/2",
+			"/admin/households/2",
 			"",
 			false,
 			http.StatusUnauthorized,
 		},
 		{
-			"edit page for a family that doesn't exist is not found",
+			"edit page for a household that doesn't exist is not found",
 			http.MethodGet,
-			"/admin/families/99/edit",
+			"/admin/households/99/edit",
 			"",
 			true,
 			http.StatusNotFound,
 		},
 		{
-			"updating a family that doesn't exist is not found",
+			"updating a household that doesn't exist is not found",
 			http.MethodPut,
-			"/admin/families/99",
-			`{"members": [{"label": "Mom"}]}`,
+			"/admin/households/99",
+			`{"kind": "single", "members": [{"firstName": "Rosa", "lastInitial": "M"}]}`,
 			true,
 			http.StatusNotFound,
 		},
 		{
 			"updating with no members is rejected",
 			http.MethodPut,
-			"/admin/families/2",
-			`{"members": []}`,
+			"/admin/households/2",
+			`{"kind": "single", "members": []}`,
 			true,
 			http.StatusBadRequest,
 		},
 		{
-			"deleting a family that doesn't exist is not found",
+			"deleting a household that doesn't exist is not found",
 			http.MethodDelete,
-			"/admin/families/99",
+			"/admin/households/99",
 			"",
 			true,
 			http.StatusNotFound,
 		},
 		{
-			"deleting a claimed family conflicts",
+			"deleting a claimed household conflicts",
 			http.MethodDelete,
-			"/admin/families/1",
+			"/admin/households/1",
 			"",
 			true,
 			http.StatusConflict,
@@ -728,7 +854,7 @@ func TestAdminFamilyEditAndDeleteErrors(t *testing.T) {
 	} {
 		t.Run(fmt.Sprintf("%s [%s %s]", tt.explanation, tt.method, tt.path), func(t *testing.T) {
 			server, d := newTestServer(t)
-			seedClaimedAndUnclaimedFamilies(t, d)
+			seedClaimedAndUnclaimedHouseholds(t, d)
 
 			req := httptest.NewRequest(tt.method, tt.path, strings.NewReader(tt.body))
 			if tt.isLoggedIn {
@@ -758,11 +884,11 @@ func TestAdminPagesOfferLogout(t *testing.T) {
 	}
 }
 
-func TestFamilyFormStartsWithMom(t *testing.T) {
+func TestHouseholdFormStartsWithFamilyAndMom(t *testing.T) {
 	server, d := newTestServer(t)
 	cookie := loginAsAdmin(t, server, d)
 
-	req := httptest.NewRequest(http.MethodGet, "/admin/families/new", nil)
+	req := httptest.NewRequest(http.MethodGet, "/admin/households/new", nil)
 	req.AddCookie(cookie)
 	rec := httptest.NewRecorder()
 	server.ServeHTTP(rec, req)
@@ -771,7 +897,10 @@ func TestFamilyFormStartsWithMom(t *testing.T) {
 		t.Fatalf("status=%d, want=%d", got, want)
 	}
 	body := rec.Body.String()
-	if !strings.Contains(body, `<h2 class="text-lg font-semibold">Mom</h2>`) {
+	if !regexp.MustCompile(`value="family"\s+checked`).MatchString(body) {
+		t.Errorf("form doesn't start as a family")
+	}
+	if !regexp.MustCompile(`data-head-heading[^>]*>\s*Mom\s*</h2>`).MatchString(body) {
 		t.Errorf("form doesn't start with a Mom section")
 	}
 	// The server builds every label, so the form has no label fields.
@@ -779,41 +908,47 @@ func TestFamilyFormStartsWithMom(t *testing.T) {
 		t.Errorf("form has a label field")
 	}
 	// Mom's section has no age or gender fields, so only the blank section
-	// that "Add member" clones has them.
+	// that "Add child" clones has them. Only Mom has a last initial.
 	if got, want := strings.Count(body, `data-field="age"`), 1; got != want {
 		t.Errorf("age fields=%d, want=%d", got, want)
 	}
 	if got, want := strings.Count(body, `data-field="gender"`), 1; got != want {
 		t.Errorf("gender fields=%d, want=%d", got, want)
 	}
+	if got, want := strings.Count(body, `data-field="lastInitial"`), 1; got != want {
+		t.Errorf("last initial fields=%d, want=%d", got, want)
+	}
+	if got, want := strings.Count(body, `data-field="firstName"`), 2; got != want {
+		t.Errorf("first name fields=%d, want=%d", got, want)
+	}
 }
 
-func TestEditFamilyFormTreatsFirstMemberAsMom(t *testing.T) {
+func TestEditHouseholdFormTreatsFirstMemberAsMom(t *testing.T) {
 	server, d := newTestServer(t)
 	cookie := loginAsAdmin(t, server, d)
 
 	if _, err := d.Exec(context.Background(), `
-	INSERT INTO family (id, created_time, last_modified_time) VALUES
-		(1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
-	INSERT INTO family_member
-		(family_id, label, age, created_time, last_modified_time)
+	INSERT INTO household (id, kind, created_time, last_modified_time) VALUES
+		(1, 'family', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+	INSERT INTO household_member
+		(household_id, first_name, label, age, created_time, last_modified_time)
 	VALUES
-		(1, 'Mom', NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-		(1, 'Child, 7', 7, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+		(1, 'Maria', 'Mom', NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+		(1, 'Sofia', 'Child, 7', 7, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
 	`); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
 
-	req := httptest.NewRequest(http.MethodGet, "/admin/families/1/edit", nil)
+	req := httptest.NewRequest(http.MethodGet, "/admin/households/1/edit", nil)
 	req.AddCookie(cookie)
 	rec := httptest.NewRecorder()
 	server.ServeHTTP(rec, req)
 
 	body := rec.Body.String()
-	if !strings.Contains(body, `<h2 class="text-lg font-semibold">Mom</h2>`) {
+	if !regexp.MustCompile(`data-head-heading[^>]*>\s*Mom\s*</h2>`).MatchString(body) {
 		t.Errorf("form doesn't render the first member as Mom")
 	}
-	// The child's section and the "Add member" template have age fields.
+	// The child's section and the "Add child" template have age fields.
 	if got, want := strings.Count(body, `data-field="age"`), 2; got != want {
 		t.Errorf("age fields=%d, want=%d", got, want)
 	}
@@ -822,12 +957,46 @@ func TestEditFamilyFormTreatsFirstMemberAsMom(t *testing.T) {
 	}
 }
 
-func TestAdminCreateFamilyLabelsAgeZeroAsInfant(t *testing.T) {
+func TestEditHouseholdFormOfSingleWoman(t *testing.T) {
 	server, d := newTestServer(t)
 	cookie := loginAsAdmin(t, server, d)
 
-	req := httptest.NewRequest(http.MethodPost, "/admin/families", strings.NewReader(
-		`{"members": [{}, {"age": 0}]}`))
+	if _, err := d.Exec(context.Background(), `
+	INSERT INTO household (id, kind, created_time, last_modified_time) VALUES
+		(1, 'single', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+	INSERT INTO household_member (
+		household_id, first_name, last_initial, label, created_time,
+		last_modified_time
+	) VALUES (
+		1, 'Rosa', 'M', 'Woman', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'
+	);
+	`); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/admin/households/1/edit", nil)
+	req.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	server.ServeHTTP(rec, req)
+
+	body := rec.Body.String()
+	if !regexp.MustCompile(`value="single"\s+checked`).MatchString(body) {
+		t.Errorf("form doesn't select single woman")
+	}
+	if regexp.MustCompile(`value="family"\s+checked`).MatchString(body) {
+		t.Errorf("form selects family")
+	}
+	if !regexp.MustCompile(`data-head-heading[^>]*>\s*Woman\s*</h2>`).MatchString(body) {
+		t.Errorf("form doesn't render the first member as Woman")
+	}
+}
+
+func TestAdminCreateHouseholdLabelsAgeZeroAsInfant(t *testing.T) {
+	server, d := newTestServer(t)
+	cookie := loginAsAdmin(t, server, d)
+
+	req := httptest.NewRequest(http.MethodPost, "/admin/households", strings.NewReader(
+		`{"kind": "family", "members": [{"firstName": "Maria", "lastInitial": "G"}, {"firstName": "Leo", "age": 0}]}`))
 	req.AddCookie(cookie)
 	rec := httptest.NewRecorder()
 	server.ServeHTTP(rec, req)
@@ -838,7 +1007,7 @@ func TestAdminCreateFamilyLabelsAgeZeroAsInfant(t *testing.T) {
 
 	var label string
 	if err := d.QueryRow(context.Background(),
-		`SELECT label FROM family_member ORDER BY id LIMIT 1 OFFSET 1`,
+		`SELECT label FROM household_member ORDER BY id LIMIT 1 OFFSET 1`,
 	).Scan(&label); err != nil {
 		t.Fatalf("read child: %v", err)
 	}

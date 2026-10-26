@@ -32,19 +32,19 @@ func adminGet(s store.Store) http.HandlerFunc {
 			return
 		}
 
-		families, err := s.ListFamilies(r.Context())
+		households, err := s.ListHouseholds(r.Context())
 		if err != nil {
-			log.Printf("adminGet: failed to list families: %v", err)
+			log.Printf("adminGet: failed to list households: %v", err)
 			renderAppError(w, r, http.StatusInternalServerError)
 			return
 		}
 
 		props := struct {
 			viewProps
-			Families []types.FamilySummary
+			Households []types.HouseholdSummary
 		}{
-			viewProps: viewProps{CspNonce: nonce, ActivePage: "dashboard"},
-			Families:  families,
+			viewProps:  viewProps{CspNonce: nonce, ActivePage: "dashboard"},
+			Households: households,
 		}
 
 		if err := t.Execute(w, props); err != nil {
@@ -54,32 +54,33 @@ func adminGet(s store.Store) http.HandlerFunc {
 	}
 }
 
-// familyFormProps configures the shared new and edit family form.
-type familyFormProps struct {
+// householdFormProps configures the shared new and edit household form.
+type householdFormProps struct {
 	viewProps
 	Heading      string
 	BackURL      string
 	SubmitMethod string
 	SubmitURL    string
-	Family       types.Family
-	// EmptyMember renders Mom's section on a new family and the blank section
-	// that "Add member" clones.
-	EmptyMember types.FamilyMember
+	Household    types.Household
+	// EmptyMember renders the head's section on a new household and the blank
+	// section that "Add child" clones.
+	EmptyMember types.HouseholdMember
 }
 
-// memberSection is what the member-fieldset partial renders. Mom's section,
-// always first, has no age, gender, or remove button.
+// memberSection is what the member-fieldset partial renders. The head of the
+// household's section, always first, has a last initial but no age, gender,
+// or remove button.
 type memberSection struct {
-	Member types.FamilyMember
-	IsMom  bool
+	Member types.HouseholdMember
+	IsHead bool
 }
 
-func parseFamilyFormTemplate() *template.Template {
+func parseHouseholdFormTemplate() *template.Template {
 	return template.Must(
 		template.New("base.html").
 			Funcs(template.FuncMap{
-				"memberSection": func(member types.FamilyMember, isMom bool) memberSection {
-					return memberSection{Member: member, IsMom: isMom}
+				"memberSection": func(member types.HouseholdMember, isHead bool) memberSection {
+					return memberSection{Member: member, IsHead: isHead}
 				},
 				// itemNames puts one item per line, the format the form's
 				// needs and wishes textareas use.
@@ -96,12 +97,12 @@ func parseFamilyFormTemplate() *template.Template {
 				"templates/layouts/base.html",
 				"templates/layouts/app.html",
 				"templates/partials/member-fieldset.html",
-				"templates/pages/family-form.html",
+				"templates/pages/household-form.html",
 			))
 }
 
-func adminNewFamilyGet() http.HandlerFunc {
-	t := parseFamilyFormTemplate()
+func adminNewHouseholdGet() http.HandlerFunc {
+	t := parseHouseholdFormTemplate()
 	return func(w http.ResponseWriter, r *http.Request) {
 		nonce, err := extractCspNonceOnly(r)
 		if err != nil {
@@ -110,23 +111,24 @@ func adminNewFamilyGet() http.HandlerFunc {
 			return
 		}
 
-		props := familyFormProps{
+		props := householdFormProps{
 			viewProps:    viewProps{CspNonce: nonce, ActivePage: "dashboard"},
-			Heading:      "New family",
+			Heading:      "New household",
 			BackURL:      "/admin",
 			SubmitMethod: http.MethodPost,
-			SubmitURL:    "/admin/families",
+			SubmitURL:    "/admin/households",
+			Household:    types.Household{Kind: types.HouseholdKindFamily},
 		}
 
 		if err := t.Execute(w, props); err != nil {
-			log.Printf("Could not create new family page: %v", err)
+			log.Printf("Could not create new household page: %v", err)
 			renderAppError(w, r, http.StatusInternalServerError)
 		}
 	}
 }
 
-func adminEditFamilyGet(s store.Store) http.HandlerFunc {
-	t := parseFamilyFormTemplate()
+func adminEditHouseholdGet(s store.Store) http.HandlerFunc {
+	t := parseHouseholdFormTemplate()
 	return func(w http.ResponseWriter, r *http.Request) {
 		nonce, err := extractCspNonceOnly(r)
 		if err != nil {
@@ -141,45 +143,45 @@ func adminEditFamilyGet(s store.Store) http.HandlerFunc {
 			return
 		}
 
-		family, err := s.GetFamily(r.Context(), id)
-		if errors.Is(err, store.ErrFamilyNotFound) {
+		household, err := s.GetHousehold(r.Context(), id)
+		if errors.Is(err, store.ErrHouseholdNotFound) {
 			renderAppError(w, r, http.StatusNotFound)
 			return
 		}
 		if err != nil {
-			log.Printf("adminEditFamilyGet: failed to get family %d: %v", id, err)
+			log.Printf("adminEditHouseholdGet: failed to get household %d: %v", id, err)
 			renderAppError(w, r, http.StatusInternalServerError)
 			return
 		}
 
-		familyURL := "/admin/families/" + strconv.Itoa(id)
-		props := familyFormProps{
+		householdURL := "/admin/households/" + strconv.Itoa(id)
+		props := householdFormProps{
 			viewProps:    viewProps{CspNonce: nonce, ActivePage: "dashboard"},
-			Heading:      "Edit Family " + strconv.Itoa(id),
-			BackURL:      familyURL,
+			Heading:      "Edit Household " + strconv.Itoa(id),
+			BackURL:      householdURL,
 			SubmitMethod: http.MethodPut,
-			SubmitURL:    familyURL,
-			Family:       family,
+			SubmitURL:    householdURL,
+			Household:    household,
 		}
 
 		if err := t.Execute(w, props); err != nil {
-			log.Printf("Could not create edit family page: %v", err)
+			log.Printf("Could not create edit household page: %v", err)
 			renderAppError(w, r, http.StatusInternalServerError)
 		}
 	}
 }
 
-func adminFamiliesPost(s store.Store) http.HandlerFunc {
+func adminHouseholdsPost(s store.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		family, err := parse.ParseFamilyPost(w, r)
+		household, err := parse.ParseHouseholdPost(w, r)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		id, err := s.CreateFamily(r.Context(), family)
+		id, err := s.CreateHousehold(r.Context(), household)
 		if err != nil {
-			log.Printf("adminFamiliesPost: failed to create family: %v", err)
+			log.Printf("adminHouseholdsPost: failed to create household: %v", err)
 			http.Error(w, "Server issue - try again later", http.StatusInternalServerError)
 			return
 		}
@@ -189,20 +191,20 @@ func adminFamiliesPost(s store.Store) http.HandlerFunc {
 		if err := json.NewEncoder(w).Encode(struct {
 			ID int `json:"id"`
 		}{ID: id}); err != nil {
-			log.Printf("adminFamiliesPost: failed to write response: %v", err)
+			log.Printf("adminHouseholdsPost: failed to write response: %v", err)
 		}
 	}
 }
 
-func adminFamilyGet(s store.Store) http.HandlerFunc {
+func adminHouseholdGet(s store.Store) http.HandlerFunc {
 	t := template.Must(
 		template.New("base.html").
 			ParseFS(
 				templateFS,
 				"templates/layouts/base.html",
 				"templates/layouts/app.html",
-				"templates/partials/family-members.html",
-				"templates/pages/admin-family.html",
+				"templates/partials/household-members.html",
+				"templates/pages/admin-household.html",
 			))
 	return func(w http.ResponseWriter, r *http.Request) {
 		nonce, err := extractCspNonceOnly(r)
@@ -218,13 +220,13 @@ func adminFamilyGet(s store.Store) http.HandlerFunc {
 			return
 		}
 
-		family, err := s.GetFamily(r.Context(), id)
-		if errors.Is(err, store.ErrFamilyNotFound) {
+		household, err := s.GetHousehold(r.Context(), id)
+		if errors.Is(err, store.ErrHouseholdNotFound) {
 			renderAppError(w, r, http.StatusNotFound)
 			return
 		}
 		if err != nil {
-			log.Printf("adminFamilyGet: failed to get family %d: %v", id, err)
+			log.Printf("adminHouseholdGet: failed to get household %d: %v", id, err)
 			renderAppError(w, r, http.StatusInternalServerError)
 			return
 		}
@@ -234,7 +236,7 @@ func adminFamilyGet(s store.Store) http.HandlerFunc {
 		switch {
 		case errors.Is(err, store.ErrClaimNotFound):
 		case err != nil:
-			log.Printf("adminFamilyGet: failed to get claim for family %d: %v", id, err)
+			log.Printf("adminHouseholdGet: failed to get claim for household %d: %v", id, err)
 			renderAppError(w, r, http.StatusInternalServerError)
 			return
 		default:
@@ -243,16 +245,16 @@ func adminFamilyGet(s store.Store) http.HandlerFunc {
 
 		props := struct {
 			viewProps
-			Family types.Family
-			Claim  *types.Claim
+			Household types.Household
+			Claim     *types.Claim
 		}{
 			viewProps: viewProps{CspNonce: nonce, ActivePage: "dashboard"},
-			Family:    family,
+			Household: household,
 			Claim:     claim,
 		}
 
 		if err := t.Execute(w, props); err != nil {
-			log.Printf("Could not create admin family page: %v", err)
+			log.Printf("Could not create admin household page: %v", err)
 			renderAppError(w, r, http.StatusInternalServerError)
 		}
 	}
@@ -262,17 +264,17 @@ func adminClaimDelete(s store.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.Atoi(r.PathValue("id"))
 		if err != nil {
-			http.Error(w, "This family has no claim.", http.StatusNotFound)
+			http.Error(w, "This household has no claim.", http.StatusNotFound)
 			return
 		}
 
 		err = s.DeleteClaim(r.Context(), id)
 		if errors.Is(err, store.ErrClaimNotFound) {
-			http.Error(w, "This family has no claim.", http.StatusNotFound)
+			http.Error(w, "This household has no claim.", http.StatusNotFound)
 			return
 		}
 		if err != nil {
-			log.Printf("adminClaimDelete: failed to release claim on family %d: %v", id, err)
+			log.Printf("adminClaimDelete: failed to release claim on household %d: %v", id, err)
 			http.Error(w, "Server issue - try again later", http.StatusInternalServerError)
 			return
 		}
@@ -285,7 +287,7 @@ func adminClaimTokenPost(s store.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.Atoi(r.PathValue("id"))
 		if err != nil {
-			http.Error(w, "This family has no claim.", http.StatusNotFound)
+			http.Error(w, "This household has no claim.", http.StatusNotFound)
 			return
 		}
 
@@ -298,11 +300,11 @@ func adminClaimTokenPost(s store.Store) http.HandlerFunc {
 
 		err = s.ReplaceClaimToken(r.Context(), id, tokenHash)
 		if errors.Is(err, store.ErrClaimNotFound) {
-			http.Error(w, "This family has no claim.", http.StatusNotFound)
+			http.Error(w, "This household has no claim.", http.StatusNotFound)
 			return
 		}
 		if err != nil {
-			log.Printf("adminClaimTokenPost: failed to replace token on family %d: %v", id, err)
+			log.Printf("adminClaimTokenPost: failed to replace token on household %d: %v", id, err)
 			http.Error(w, "Server issue - try again later", http.StatusInternalServerError)
 			return
 		}
@@ -317,27 +319,27 @@ func adminClaimTokenPost(s store.Store) http.HandlerFunc {
 	}
 }
 
-func adminFamilyPut(s store.Store) http.HandlerFunc {
+func adminHouseholdPut(s store.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.Atoi(r.PathValue("id"))
 		if err != nil {
-			http.Error(w, "This family doesn't exist.", http.StatusNotFound)
+			http.Error(w, "This household doesn't exist.", http.StatusNotFound)
 			return
 		}
 
-		family, err := parse.ParseFamilyPost(w, r)
+		household, err := parse.ParseHouseholdPost(w, r)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		err = s.UpdateFamily(r.Context(), id, family)
-		if errors.Is(err, store.ErrFamilyNotFound) {
-			http.Error(w, "This family doesn't exist.", http.StatusNotFound)
+		err = s.UpdateHousehold(r.Context(), id, household)
+		if errors.Is(err, store.ErrHouseholdNotFound) {
+			http.Error(w, "This household doesn't exist.", http.StatusNotFound)
 			return
 		}
 		if err != nil {
-			log.Printf("adminFamilyPut: failed to update family %d: %v", id, err)
+			log.Printf("adminHouseholdPut: failed to update household %d: %v", id, err)
 			http.Error(w, "Server issue - try again later", http.StatusInternalServerError)
 			return
 		}
@@ -346,29 +348,29 @@ func adminFamilyPut(s store.Store) http.HandlerFunc {
 		if err := json.NewEncoder(w).Encode(struct {
 			ID int `json:"id"`
 		}{ID: id}); err != nil {
-			log.Printf("adminFamilyPut: failed to write response: %v", err)
+			log.Printf("adminHouseholdPut: failed to write response: %v", err)
 		}
 	}
 }
 
-func adminFamilyDelete(s store.Store) http.HandlerFunc {
+func adminHouseholdDelete(s store.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.Atoi(r.PathValue("id"))
 		if err != nil {
-			http.Error(w, "This family doesn't exist.", http.StatusNotFound)
+			http.Error(w, "This household doesn't exist.", http.StatusNotFound)
 			return
 		}
 
-		err = s.DeleteFamily(r.Context(), id)
+		err = s.DeleteHousehold(r.Context(), id)
 		switch {
-		case errors.Is(err, store.ErrFamilyNotFound):
-			http.Error(w, "This family doesn't exist.", http.StatusNotFound)
+		case errors.Is(err, store.ErrHouseholdNotFound):
+			http.Error(w, "This household doesn't exist.", http.StatusNotFound)
 			return
-		case errors.Is(err, store.ErrFamilyAlreadyClaimed):
-			http.Error(w, "Release this family's claim before deleting it.", http.StatusConflict)
+		case errors.Is(err, store.ErrHouseholdAlreadyClaimed):
+			http.Error(w, "Release this household's claim before deleting it.", http.StatusConflict)
 			return
 		case err != nil:
-			log.Printf("adminFamilyDelete: failed to delete family %d: %v", id, err)
+			log.Printf("adminHouseholdDelete: failed to delete household %d: %v", id, err)
 			http.Error(w, "Server issue - try again later", http.StatusInternalServerError)
 			return
 		}

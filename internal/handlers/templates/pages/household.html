@@ -1,4 +1,4 @@
-{{ define "title" }}Family {{ .Family.ID }}{{ end }}
+{{ define "title" }}Household {{ .Household.ID }}{{ end }}
 {{ define "script-tags" }}
   <script type="module" nonce="{{ .CspNonce }}">
     const form = document.getElementById("claim");
@@ -9,8 +9,8 @@
       });
     }
 
-    async function claimFamily(familyId, giver) {
-      return fetch(`/families/${familyId}/claim`, {
+    async function claimHousehold(householdId, giver) {
+      return fetch(`/households/${householdId}/claim`, {
         method: "POST",
         mode: "same-origin",
         credentials: "include",
@@ -38,7 +38,7 @@
         phone: document.getElementById("giver-phone").value,
       };
       setFormState(false);
-      claimFamily(form.dataset.familyId, giver)
+      claimHousehold(form.dataset.householdId, giver)
         .then((claim) => {
           document.location = claim.url;
         })
@@ -53,21 +53,22 @@
 {{ define "content" }}
   <main class="max-w-lg mx-auto px-4 pt-8 pb-16">
     <a href="/" class="text-sm text-accent hover:text-accent-hover"
-      >&larr; All families</a
+      >&larr; All households</a
     >
     <h1 class="mt-2 text-2xl font-bold text-festive">
-      Family
-      {{ .Family.ID }}
+      Household
+      {{ .Household.ID }}
     </h1>
+    <p class="mt-1 text-muted">{{ .Household.Kind.Label }}</p>
     <div class="mt-6 flex flex-col gap-4">
-      {{ template "family-members" .Family.Members }}
+      {{ template "household-members" .Household.Members }}
     </div>
 
     <section class="mt-8 rounded-xl bg-surface p-5 shadow-sm">
-      <h2 class="text-lg font-semibold">Adopt this family</h2>
+      <h2 class="text-lg font-semibold">Adopt this household</h2>
       <p class="mt-1 text-sm text-muted">
-        You'll shop for every member of this family. Only the drive's organizers
-        see your contact information.
+        You'll shop for every member of this household. Only the drive's
+        organizers see your contact information.
       </p>
       <div id="error-message" class="mt-4 hidden" role="alert">
         <div
@@ -86,7 +87,7 @@
       </div>
       <form
         id="claim"
-        data-family-id="{{ .Family.ID }}"
+        data-household-id="{{ .Household.ID }}"
         class="mt-4 flex flex-col gap-4"
       >
         <label class="block">
@@ -123,8 +124,8 @@
           type="submit"
           class="inline-flex items-center justify-center rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50"
         >
-          Adopt Family
-          {{ .Family.ID }}
+          Adopt Household
+          {{ .Household.ID }}
         </button>
       </form>
     </section>

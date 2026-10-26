@@ -12,21 +12,27 @@ CREATE TABLE session (
     expires_at TEXT NOT NULL
 ) STRICT;
 
--- The app labels each family as "Family <id>" to keep recipients anonymous.
--- AUTOINCREMENT keeps SQLite from reusing a deleted family's ID, which would
--- hand its public label and URL to a different family.
-CREATE TABLE family (
+-- The app labels each household as "Household <id>". AUTOINCREMENT keeps
+-- SQLite from reusing a deleted household's ID, which would hand its public
+-- label and URL to a different household. A 'family' is a mom and her
+-- children. A 'single' household is one woman living on her own.
+CREATE TABLE household (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    kind TEXT NOT NULL CHECK (kind IN ('family', 'single')),
     created_time TEXT NOT NULL,
     last_modified_time TEXT NOT NULL
 ) STRICT;
 
 -- Columns mirror the paper intake sheet that admins transcribe. Optional
 -- text fields use '' for blank. A member's needs and wishes live in
--- wishlist_item.
-CREATE TABLE family_member (
+-- wishlist_item. To limit identifying data, the head of the household stores
+-- only her first name and last initial, and children store only a first name
+-- (last_initial is '').
+CREATE TABLE household_member (
     id INTEGER PRIMARY KEY,
-    family_id INTEGER NOT NULL REFERENCES family (id) ON DELETE CASCADE,
+    household_id INTEGER NOT NULL REFERENCES household (id) ON DELETE CASCADE,
+    first_name TEXT NOT NULL,
+    last_initial TEXT NOT NULL DEFAULT '',
     label TEXT NOT NULL,
     age INTEGER,
     gender TEXT NOT NULL DEFAULT '',
@@ -44,13 +50,14 @@ CREATE TABLE family_member (
     last_modified_time TEXT NOT NULL
 ) STRICT;
 
-CREATE INDEX family_member_family_id_idx ON family_member (family_id);
+CREATE INDEX household_member_household_id_idx
+ON household_member (household_id);
 
 -- One row per line in the sheet's "Need" or "Wish" section.
 CREATE TABLE wishlist_item (
     id INTEGER PRIMARY KEY,
-    family_member_id INTEGER NOT NULL
-    REFERENCES family_member (id) ON DELETE CASCADE,
+    household_member_id INTEGER NOT NULL
+    REFERENCES household_member (id) ON DELETE CASCADE,
     kind TEXT NOT NULL CHECK (kind IN ('need', 'wish')),
     name TEXT NOT NULL,
     notes TEXT NOT NULL DEFAULT '',
@@ -58,15 +65,16 @@ CREATE TABLE wishlist_item (
     last_modified_time TEXT NOT NULL
 ) STRICT;
 
-CREATE INDEX wishlist_item_family_member_id_idx
-ON wishlist_item (family_member_id);
+CREATE INDEX wishlist_item_household_member_id_idx
+ON wishlist_item (household_member_id);
 
--- Each row is one giver's claim on one family. Releasing a claim deletes the
--- row. The UNIQUE constraints enforce the one-giver-per-family and
--- one-family-per-giver rules.
+-- Each row is one giver's claim on one household. Releasing a claim deletes the
+-- row. The UNIQUE constraints enforce the one-giver-per-household and
+-- one-household-per-giver rules.
 CREATE TABLE claim (
     id INTEGER PRIMARY KEY,
-    family_id INTEGER NOT NULL UNIQUE REFERENCES family (id) ON DELETE CASCADE,
+    household_id INTEGER NOT NULL UNIQUE
+    REFERENCES household (id) ON DELETE CASCADE,
     giver_name TEXT NOT NULL,
     giver_email TEXT NOT NULL UNIQUE COLLATE nocase,
     giver_phone TEXT NOT NULL,

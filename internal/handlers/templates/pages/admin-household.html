@@ -1,8 +1,8 @@
-{{ define "title" }}Family {{ .Family.ID }}{{ end }}
+{{ define "title" }}Household {{ .Household.ID }}{{ end }}
 {{ define "script-tags" }}
   <script type="module" nonce="{{ .CspNonce }}">
-    const page = document.getElementById("admin-family");
-    const familyId = page.dataset.familyId;
+    const page = document.getElementById("admin-household");
+    const householdId = page.dataset.householdId;
 
     // The server renders dates in UTC. Show them in the viewer's timezone.
     document.querySelectorAll("time[data-local-date]").forEach((el) => {
@@ -44,7 +44,7 @@
 
       issueLink.addEventListener("click", () => {
         issueLink.disabled = true;
-        send("POST", `/admin/families/${familyId}/claim/token`)
+        send("POST", `/admin/households/${householdId}/claim/token`)
           .then((response) => response.json())
           .then((claim) => {
             document.getElementById("new-link-input").value =
@@ -83,7 +83,7 @@
         .getElementById("release-confirmed")
         .addEventListener("click", (evt) => {
           evt.target.disabled = true;
-          send("DELETE", `/admin/families/${familyId}/claim`)
+          send("DELETE", `/admin/households/${householdId}/claim`)
             .then(() => {
               window.location.reload();
             })
@@ -107,7 +107,7 @@
         .getElementById("delete-confirmed")
         .addEventListener("click", (evt) => {
           evt.target.disabled = true;
-          send("DELETE", `/admin/families/${familyId}`)
+          send("DELETE", `/admin/households/${householdId}`)
             .then(() => {
               document.location = "/admin";
             })
@@ -120,15 +120,18 @@
   </script>
 {{ end }}
 {{ define "page-content" }}
-  <div id="admin-family" data-family-id="{{ .Family.ID }}">
+  <div id="admin-household" data-household-id="{{ .Household.ID }}">
     <a href="/admin" class="text-sm text-accent hover:text-accent-hover"
-      >&larr; Families</a
+      >&larr; Households</a
     >
     <div class="mt-2 flex items-center justify-between gap-4">
       <div class="flex items-center gap-3">
-        <h1 class="text-2xl font-bold">Family {{ .Family.ID }}</h1>
+        <div>
+          <h1 class="text-2xl font-bold">Household {{ .Household.ID }}</h1>
+          <p class="text-sm text-muted">{{ .Household.Kind.Label }}</p>
+        </div>
         <a
-          href="/admin/families/{{ .Family.ID }}/edit"
+          href="/admin/households/{{ .Household.ID }}/edit"
           class="text-sm text-accent hover:text-accent-hover"
           >Edit</a
         >
@@ -252,7 +255,7 @@
         >
           <p class="text-sm text-danger">
             Releasing this claim stops the giver's link from working and returns
-            the family to the public listing.
+            the household to the public listing.
           </p>
           <div class="mt-3 flex gap-2">
             <button
@@ -274,23 +277,23 @@
       </section>
     {{ else }}
       <p class="mt-4 text-muted">
-        {{ if .Family.Members }}
-          Givers can see and claim this family on the
+        {{ if .Household.Members }}
+          Givers can see and claim this household on the
           <a
-            href="/families/{{ .Family.ID }}"
+            href="/households/{{ .Household.ID }}"
             class="text-accent hover:text-accent-hover"
             >public listing</a
           >.
         {{ else }}
-          Givers can't see this family until it has members.
+          Givers can't see this household until it has members.
         {{ end }}
       </p>
     {{ end }}
 
 
     <div class="mt-6 flex flex-col gap-4">
-      {{ if .Family.Members }}
-        {{ template "family-members" .Family.Members }}
+      {{ if .Household.Members }}
+        {{ template "household-members" .Household.Members }}
       {{ else }}
         <p class="text-muted">No members</p>
       {{ end }}
@@ -299,7 +302,7 @@
     <section class="mt-8 border-t border-border pt-6">
       {{ if .Claim }}
         <p class="text-sm text-muted">
-          Release this family's claim before deleting it.
+          Release this household's claim before deleting it.
         </p>
       {{ else }}
         <button
@@ -307,15 +310,15 @@
           type="button"
           class="rounded-lg px-4 py-2 text-sm font-semibold text-danger hover:bg-danger-surface"
         >
-          Delete family
+          Delete household
         </button>
         <div
           id="delete-confirm"
           class="mt-4 hidden rounded-lg bg-danger-surface p-4"
         >
           <p class="text-sm text-danger">
-            Deleting Family {{ .Family.ID }} removes its members and wishlists
-            for good.
+            Deleting Household {{ .Household.ID }} removes its members and
+            wishlists for good.
           </p>
           <div class="mt-3 flex gap-2">
             <button
@@ -323,7 +326,7 @@
               type="button"
               class="rounded-lg bg-danger px-4 py-2 text-sm font-semibold text-on-accent disabled:opacity-50"
             >
-              Delete family
+              Delete household
             </button>
             <button
               id="delete-cancel"

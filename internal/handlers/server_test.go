@@ -132,8 +132,8 @@ func TestCrossOriginRequestsAreRejected(t *testing.T) {
 			server, d := newTestServer(t)
 			cookie := loginAsAdmin(t, server, d)
 
-			req := httptest.NewRequest(http.MethodPost, "/admin/families", strings.NewReader(
-				`{"members": [{"label": "Mom"}]}`))
+			req := httptest.NewRequest(http.MethodPost, "/admin/households", strings.NewReader(
+				`{"kind": "single", "members": [{"firstName": "Rosa", "lastInitial": "M"}]}`))
 			req.AddCookie(cookie)
 			req.Header.Set(tt.header, tt.value)
 			rec := httptest.NewRecorder()

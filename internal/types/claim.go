@@ -2,7 +2,7 @@ package types
 
 import "time"
 
-// Giver is the contact information a giver leaves when claiming a family.
+// Giver is the contact information a giver leaves when claiming a household.
 // Only admins can read it.
 type Giver struct {
 	Name  string
@@ -10,15 +10,15 @@ type Giver struct {
 	Phone string
 }
 
-// NewClaim is a giver's claim on a family. The store keeps only the hash of
+// NewClaim is a giver's claim on a household. The store keeps only the hash of
 // the giver's access token.
 type NewClaim struct {
-	FamilyID        int
+	HouseholdID     int
 	Giver           Giver
 	AccessTokenHash string
 }
 
-// Claim is a giver's claim on a family as admins see it.
+// Claim is a giver's claim on a household as admins see it.
 type Claim struct {
 	Giver       Giver
 	CreatedTime time.Time

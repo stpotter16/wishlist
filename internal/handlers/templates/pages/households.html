@@ -1,20 +1,21 @@
-{{ define "title" }}Adopt a family{{ end }}
+{{ define "title" }}Adopt a household{{ end }}
 {{ define "script-tags" }}{{ end }}
 {{ define "content" }}
   <main class="max-w-lg mx-auto px-4 pt-8 pb-16">
-    <h1 class="text-2xl font-bold text-festive">Adopt a family</h1>
+    <h1 class="text-2xl font-bold text-festive">Adopt a household</h1>
     <p class="mt-1 text-muted">
-      Choose a family to see what each member needs and wishes for.
+      Choose a household to see what each member needs and wishes for.
     </p>
-    {{ if .Families }}
+    {{ if .Households }}
       <ul class="mt-6 flex flex-col gap-4">
-        {{ range .Families }}
+        {{ range .Households }}
           <li>
             <a
-              href="/families/{{ .ID }}"
+              href="/households/{{ .ID }}"
               class="block rounded-xl bg-surface p-5 shadow-sm hover:outline-2 hover:outline-accent focus-visible:outline-2 focus-visible:outline-accent"
             >
-              <p class="text-lg font-semibold">Family {{ .ID }}</p>
+              <p class="text-lg font-semibold">Household {{ .ID }}</p>
+              <p class="text-sm text-muted">{{ .Kind.Label }}</p>
               <ul class="mt-3 flex flex-wrap gap-2">
                 {{ range .MemberLabels }}
                   <li
@@ -30,9 +31,9 @@
       </ul>
     {{ else }}
       <div class="flex flex-col items-center gap-1 pt-16 text-center">
-        <p class="text-lg font-semibold">No families available</p>
+        <p class="text-lg font-semibold">No households available</p>
         <p class="text-muted">
-          Every family has been adopted. Thank you for checking!
+          Every household has been adopted. Thank you for checking!
         </p>
       </div>
     {{ end }}
