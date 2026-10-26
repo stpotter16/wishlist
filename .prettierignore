@@ -1,3 +1,6 @@
 # Ignore artifacts:
 build
 coverage
+
+# Generated and minified by Tailwind (make css):
+internal/handlers/static/css/style.css
