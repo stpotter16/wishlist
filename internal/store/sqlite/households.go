@@ -393,6 +393,8 @@ func (s Store) ListHouseholds(ctx context.Context) ([]types.HouseholdSummary, er
 	SELECT
 		household.id,
 		household.kind,
+		household_member.first_name,
+		household_member.last_initial,
 		household_member.label,
 		claim.giver_name,
 		claim.giver_email
@@ -413,16 +415,24 @@ func (s Store) ListHouseholds(ctx context.Context) ([]types.HouseholdSummary, er
 	for rows.Next() {
 		var householdID int
 		var kind string
+		var firstName sql.NullString
+		var lastInitial sql.NullString
 		var memberLabel sql.NullString
 		var giverName sql.NullString
 		var giverEmail sql.NullString
-		if err := rows.Scan(&householdID, &kind, &memberLabel, &giverName, &giverEmail); err != nil {
+		if err := rows.Scan(&householdID, &kind, &firstName, &lastInitial, &memberLabel, &giverName, &giverEmail); err != nil {
 			return nil, err
 		}
+		// Members come in ID order, so a household's first row is its head.
 		if len(households) == 0 || households[len(households)-1].ID != householdID {
+			var headName string
+			if firstName.Valid {
+				headName = types.HouseholdMember{FirstName: firstName.String, LastInitial: lastInitial.String}.Name()
+			}
 			households = append(households, types.HouseholdSummary{
 				ID:         householdID,
 				Kind:       types.HouseholdKind(kind),
+				HeadName:   headName,
 				IsClaimed:  giverName.Valid,
 				GiverName:  giverName.String,
 				GiverEmail: giverEmail.String,

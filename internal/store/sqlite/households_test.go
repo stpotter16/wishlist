@@ -308,11 +308,11 @@ func TestListHouseholds(t *testing.T) {
 		(2, 'single', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
 		(3, 'family', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
 	INSERT INTO household_member
-		(household_id, first_name, label, created_time, last_modified_time)
+		(household_id, first_name, last_initial, label, created_time, last_modified_time)
 	VALUES
-		(1, 'Maria', 'Mom', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-		(1, 'Sofia', 'Child, 7', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-		(2, 'Rosa', 'Woman', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+		(1, 'Maria', 'G', 'Mom', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+		(1, 'Sofia', '', 'Child, 7', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+		(2, 'Rosa', 'M', 'Woman', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
 	INSERT INTO claim (
 		household_id, giver_name, giver_email, giver_phone, access_token_hash,
 		created_time
@@ -330,8 +330,8 @@ func TestListHouseholds(t *testing.T) {
 	}
 
 	want := []types.HouseholdSummary{
-		{ID: 1, Kind: types.HouseholdKindFamily, MemberLabels: []string{"Mom", "Child, 7"}, IsClaimed: false},
-		{ID: 2, Kind: types.HouseholdKindSingle, MemberLabels: []string{"Woman"}, IsClaimed: true, GiverName: "Giver", GiverEmail: "giver@example.com"},
+		{ID: 1, Kind: types.HouseholdKindFamily, HeadName: "Maria G.", MemberLabels: []string{"Mom", "Child, 7"}, IsClaimed: false},
+		{ID: 2, Kind: types.HouseholdKindSingle, HeadName: "Rosa M.", MemberLabels: []string{"Woman"}, IsClaimed: true, GiverName: "Giver", GiverEmail: "giver@example.com"},
 		{ID: 3, Kind: types.HouseholdKindFamily, MemberLabels: nil, IsClaimed: false},
 	}
 	if got := households; !reflect.DeepEqual(got, want) {

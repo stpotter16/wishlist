@@ -26,10 +26,10 @@ func TestAdminListsAllHouseholdsWithClaimStatus(t *testing.T) {
 		(1, 'family', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
 		(2, 'family', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
 	INSERT INTO household_member
-		(household_id, first_name, label, created_time, last_modified_time)
+		(household_id, first_name, last_initial, label, created_time, last_modified_time)
 	VALUES
-		(1, 'Maria', 'Mom', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-		(2, 'Dan', 'Dad', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+		(1, 'Maria', 'G', 'Mom', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+		(2, 'Dan', 'R', 'Dad', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
 	INSERT INTO claim (
 		household_id, giver_name, giver_email, giver_phone, access_token_hash,
 		created_time
@@ -50,11 +50,11 @@ func TestAdminListsAllHouseholdsWithClaimStatus(t *testing.T) {
 		t.Fatalf("status=%d, want=%d", got, want)
 	}
 	body := strings.Join(strings.Fields(rec.Body.String()), " ")
-	if !strings.Contains(body, "Blackbird Place Resident/Family 1") {
-		t.Errorf("body is missing unclaimed household")
+	if !strings.Contains(body, "Maria G.") {
+		t.Errorf("body is missing unclaimed household's head name")
 	}
-	if !strings.Contains(body, "Blackbird Place Resident/Family 2") {
-		t.Errorf("body is missing claimed household")
+	if !strings.Contains(body, "Dan R.") {
+		t.Errorf("body is missing claimed household's head name")
 	}
 	if !strings.Contains(body, "Claimed") {
 		t.Errorf("body is missing claimed status")
@@ -260,6 +260,22 @@ func TestAdminCreateSingleWomanHousehold(t *testing.T) {
 	}
 	if strings.Contains(body, "Single woman") {
 		t.Errorf("household page shows the household's kind")
+	}
+
+	// The admin pages title the household by her name and omit its kind too.
+	for _, path := range []string{"/admin", "/admin/households/1"} {
+		req = httptest.NewRequest(http.MethodGet, path, nil)
+		req.AddCookie(cookie)
+		rec = httptest.NewRecorder()
+		server.ServeHTTP(rec, req)
+
+		body = rec.Body.String()
+		if !strings.Contains(body, "Rosa M.") {
+			t.Errorf("%s is missing her name", path)
+		}
+		if strings.Contains(body, "Single woman") {
+			t.Errorf("%s shows the household's kind", path)
+		}
 	}
 }
 

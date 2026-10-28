@@ -1,5 +1,6 @@
 {{ define "title" }}Blackbird Place Residents/Families{{ end }}
 {{ define "script-tags" }}{{ end }}
+{{ define "main-width" }}max-w-lg lg:max-w-5xl{{ end }}
 {{ define "page-content" }}
   <div class="flex items-center justify-between gap-4">
     <h1 class="text-2xl font-bold">Blackbird Place Residents/Families</h1>
@@ -10,20 +11,23 @@
     >
   </div>
   {{ if .Households }}
-    <ul class="mt-6 flex flex-col gap-4">
+    <ul class="mt-6 grid gap-4 lg:grid-cols-3">
       {{ range .Households }}
         <li>
           <a
             href="/admin/households/{{ .ID }}"
-            class="block rounded-xl bg-surface p-5 shadow-sm hover:outline-2 hover:outline-accent focus-visible:outline-2 focus-visible:outline-accent"
+            class="block h-full rounded-xl bg-surface p-5 shadow-sm hover:outline-2 hover:outline-accent focus-visible:outline-2 focus-visible:outline-accent"
           >
             <div class="flex items-center justify-between gap-4">
               <div class="min-w-0">
                 <p class="text-lg font-semibold">
-                  Blackbird Place Resident/Family
-                  {{ .ID }}
+                  {{ with .HeadName }}
+                    {{ . }}
+                  {{ else }}
+                    Blackbird Place Resident/Family
+                    {{ .ID }}
+                  {{ end }}
                 </p>
-                <p class="text-sm text-muted">{{ .Kind.Label }}</p>
                 {{ if .IsClaimed }}
                   <p class="text-sm wrap-break-word text-muted">
                     Claimed by {{ .GiverName }} -

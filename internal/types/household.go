@@ -23,8 +23,8 @@ func (k HouseholdKind) Label() string {
 type HouseholdSummary struct {
 	ID   int
 	Kind HouseholdKind
-	// HeadName is set only in the public listing, which titles each household
-	// by the head of the household's name, such as "Maria G.".
+	// HeadName titles each household by the head of the household's name, such
+	// as "Maria G.". It's empty for a household with no members.
 	HeadName     string
 	MemberLabels []string
 	IsClaimed    bool

@@ -1,5 +1,7 @@
 {{ define "content" }}
-  <main class="max-w-lg mx-auto px-4 pt-4 pb-24">
+  <main
+    class="{{ block "main-width" . }}max-w-lg{{ end }} mx-auto px-4 pt-4 pb-24"
+  >
     {{ block "page-content" . }}{{ end }}
   </main>
   <nav
