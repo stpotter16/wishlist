@@ -28,6 +28,7 @@ The current Fly deployment is a stakeholder test drive. It runs without Litestre
   - A single woman (`single`): one woman living on her own.
   - Admins pick the kind on the household form. The server rejects a family without a child and a single woman's household with more than one member, so a forgotten child can't turn a family into a single woman.
   - The app shows a household by a label such as "Blackbird Place Resident/Family 12", plus its kind ("Family" or "Single woman"). The public listing is the exception: it titles each card by the head of the household's name and omits the kind. Stakeholders asked for this on 2026-10-27.
+  - The public listing is a single column on phones and a three-column grid from Tailwind's `lg` breakpoint (1024px) up. Stakeholders asked for this on 2026-10-27.
   - The UI never says "household". It says "Blackbird Place Resident/Family" (plural "Blackbird Place Residents/Families"). Code, routes, and the database keep "household".
 - Each household member has their own wishlist.
   - The first member is the head of the household: the mom or the single woman. Every other member is a child.
