@@ -11,6 +11,10 @@ The current Fly deployment is a stakeholder test drive. It runs without Litestre
 1. **Set up the custom domain and Resend.** Point a subdomain at the app (`fly certs add <hostname>`, plus the DNS record Fly gives), and add the hostname to the Turnstile widget. Verify the sending domain in Resend with its SPF and DKIM records, and create an API key with "Sending access" restricted to that domain. Then set the `WISHLIST_RESEND_API_KEY`, `WISHLIST_EMAIL_FROM`, `WISHLIST_EMAIL_REPLY_TO`, and `WISHLIST_BASE_URL` secrets. The server refuses to start without them, so this has to happen before the next deploy.
 2. **Turn Litestream back on.** Create a bucket and set the `LITESTREAM_BUCKET`, `LITESTREAM_ENDPOINT`, `LITESTREAM_ACCESS_KEY_ID`, and `LITESTREAM_SECRET_ACCESS_KEY` secrets, so production data survives deploys and machine restarts. Without them, `docker-entrypoint` starts the app without replication.
 
+## Nice to have
+
+- **Bust the stylesheet cache on deploy.** `serveStaticFiles` (`internal/handlers/static.go`) sends `Cache-Control: max-age=3600`, and `base.html` links `/static/css/style.css` at a fixed URL. After a deploy, browsers can pair new templates with the old CSS for up to an hour, so new Tailwind classes appear to do nothing. Append a version to the link, such as `?v=<server start time>`, reusing the timestamp that `serveStaticFiles` already uses for its ETag.
+
 ## Roles
 
 - Admins run the drive.
