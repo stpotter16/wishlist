@@ -66,11 +66,11 @@ func ParseHouseholdForm(body HouseholdForm) (types.Household, error) {
 		headLabel = "Mom"
 	case types.HouseholdKindSingle:
 		if len(body.Members) != 1 {
-			return types.Household{}, errors.New("a single woman's household has exactly one member")
+			return types.Household{}, errors.New("a single woman's Blackbird Place Resident/Family has exactly one member")
 		}
 		headLabel = "Woman"
 	default:
-		return types.Household{}, errors.New("household must be a family or a single woman")
+		return types.Household{}, errors.New("Blackbird Place Resident/Family must be a family or a single woman")
 	}
 
 	household := types.Household{Kind: kind}
@@ -132,7 +132,7 @@ func ParseHouseholdForm(body HouseholdForm) (types.Household, error) {
 func parseLastInitial(s string) (string, error) {
 	initial := []rune(strings.TrimSuffix(strings.TrimSpace(s), "."))
 	if len(initial) != 1 || !unicode.IsLetter(initial[0]) {
-		return "", errors.New("the head of the household needs a one-letter last initial")
+		return "", errors.New("the head of the Blackbird Place Resident/Family needs a one-letter last initial")
 	}
 	return strings.ToUpper(string(initial)), nil
 }

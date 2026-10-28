@@ -49,11 +49,11 @@ func TestAdminListsAllHouseholdsWithClaimStatus(t *testing.T) {
 	if got, want := rec.Code, http.StatusOK; got != want {
 		t.Fatalf("status=%d, want=%d", got, want)
 	}
-	body := rec.Body.String()
-	if !strings.Contains(body, "Household 1") {
+	body := strings.Join(strings.Fields(rec.Body.String()), " ")
+	if !strings.Contains(body, "Blackbird Place Resident/Family 1") {
 		t.Errorf("body is missing unclaimed household")
 	}
-	if !strings.Contains(body, "Household 2") {
+	if !strings.Contains(body, "Blackbird Place Resident/Family 2") {
 		t.Errorf("body is missing claimed household")
 	}
 	if !strings.Contains(body, "Claimed") {
@@ -64,7 +64,7 @@ func TestAdminListsAllHouseholdsWithClaimStatus(t *testing.T) {
 	}
 	// Collapse whitespace like a browser does, so template formatting doesn't
 	// matter.
-	if !strings.Contains(strings.Join(strings.Fields(body), " "), "Claimed by Pat Jones - giver@example.com") {
+	if !strings.Contains(body, "Claimed by Pat Jones - giver@example.com") {
 		t.Errorf("body is missing the claimed household's giver")
 	}
 }
@@ -239,8 +239,8 @@ func TestAdminCreateSingleWomanHousehold(t *testing.T) {
 	rec = httptest.NewRecorder()
 	server.ServeHTTP(rec, req)
 
-	body := rec.Body.String()
-	for _, want := range []string{"Household 1", "Single woman", "Woman"} {
+	body := strings.Join(strings.Fields(rec.Body.String()), " ")
+	for _, want := range []string{"Blackbird Place Resident/Family 1", "Single woman", "Woman"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("listing is missing %q", want)
 		}
@@ -1070,7 +1070,7 @@ func TestAdminIssueNewLinkEmailsGiver(t *testing.T) {
 			if got, want := email.to, "giver@example.com"; got != want {
 				t.Errorf("to=%q, want=%q", got, want)
 			}
-			if got, want := email.subject, "Your new link for Household 1"; got != want {
+			if got, want := email.subject, "Your new link for Blackbird Place Resident/Family 1"; got != want {
 				t.Errorf("subject=%q, want=%q", got, want)
 			}
 			if !strings.Contains(email.body, testBaseURL+claim.URL) {

@@ -40,8 +40,8 @@ func TestHouseholdsListsOnlyUnclaimedHouseholds(t *testing.T) {
 	if got, want := rec.Code, http.StatusOK; got != want {
 		t.Fatalf("status=%d, want=%d", got, want)
 	}
-	body := rec.Body.String()
-	if !strings.Contains(body, "Household 1") {
+	body := strings.Join(strings.Fields(rec.Body.String()), " ")
+	if !strings.Contains(body, "Blackbird Place Resident/Family 1") {
 		t.Errorf("body is missing unclaimed household's label")
 	}
 	if !strings.Contains(body, "Mom") {
@@ -50,7 +50,7 @@ func TestHouseholdsListsOnlyUnclaimedHouseholds(t *testing.T) {
 	if !strings.Contains(body, `href="/households/1"`) {
 		t.Errorf("body is missing link to unclaimed household")
 	}
-	if strings.Contains(body, "Household 2") {
+	if strings.Contains(body, "Blackbird Place Resident/Family 2") {
 		t.Errorf("body contains claimed household's label")
 	}
 	if strings.Contains(body, "Dad") {
@@ -68,7 +68,7 @@ func TestHouseholdsShowsEmptyState(t *testing.T) {
 	if got, want := rec.Code, http.StatusOK; got != want {
 		t.Fatalf("status=%d, want=%d", got, want)
 	}
-	if got, want := rec.Body.String(), "No households available"; !strings.Contains(got, want) {
+	if got, want := rec.Body.String(), "No Blackbird Place Residents/Families available"; !strings.Contains(got, want) {
 		t.Errorf("body is missing %q", want)
 	}
 }

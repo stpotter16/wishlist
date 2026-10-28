@@ -1,4 +1,4 @@
-{{ define "title" }}Household {{ .Household.ID }}{{ end }}
+{{ define "title" }}Blackbird Place Resident/Family {{ .Household.ID }}{{ end }}
 {{ define "script-tags" }}
   <script
     src="https://challenges.cloudflare.com/turnstile/v0/api.js"
@@ -75,10 +75,10 @@
 {{ define "content" }}
   <main class="max-w-lg mx-auto px-4 pt-8 pb-16">
     <a href="/" class="text-sm text-accent hover:text-accent-hover"
-      >&larr; All households</a
+      >&larr; All Blackbird Place Residents/Families</a
     >
     <h1 class="mt-2 text-2xl font-bold text-festive">
-      Household
+      Blackbird Place Resident/Family
       {{ .Household.ID }}
     </h1>
     <p class="mt-1 text-muted">{{ .Household.Kind.Label }}</p>
@@ -87,10 +87,12 @@
     </div>
 
     <section class="mt-8 rounded-xl bg-surface p-5 shadow-sm">
-      <h2 class="text-lg font-semibold">Adopt this household</h2>
+      <h2 class="text-lg font-semibold">
+        Adopt this Blackbird Place Resident/Family
+      </h2>
       <p class="mt-1 text-sm text-muted">
-        You'll shop for every member of this household. Only the drive's
-        organizers see your contact information.
+        You'll shop for every member of this Blackbird Place Resident/Family.
+        Only the drive's organizers see your contact information.
       </p>
       <div id="error-message" class="mt-4 hidden" role="alert">
         <div
@@ -151,7 +153,7 @@
           type="submit"
           class="inline-flex items-center justify-center rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50"
         >
-          Adopt Household
+          Adopt Blackbird Place Resident/Family
           {{ .Household.ID }}
         </button>
       </form>

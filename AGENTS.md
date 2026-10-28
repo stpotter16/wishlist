@@ -27,7 +27,8 @@ The current Fly deployment is a stakeholder test drive. It runs without Litestre
   - A family (`family`): a mom and her children.
   - A single woman (`single`): one woman living on her own.
   - Admins pick the kind on the household form. The server rejects a family without a child and a single woman's household with more than one member, so a forgotten child can't turn a family into a single woman.
-  - The app shows a household by a label such as "Household 12", plus its kind ("Family" or "Single woman").
+  - The app shows a household by a label such as "Blackbird Place Resident/Family 12", plus its kind ("Family" or "Single woman").
+  - The UI never says "household". It says "Blackbird Place Resident/Family" (plural "Blackbird Place Residents/Families"). Code, routes, and the database keep "household".
 - Each household member has their own wishlist.
   - The first member is the head of the household: the mom or the single woman. Every other member is a child.
   - The server builds every member label in `parse.ParseHouseholdPost`; the household form has no label field.

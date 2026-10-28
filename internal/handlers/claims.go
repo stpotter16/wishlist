@@ -26,7 +26,7 @@ func householdClaimPost(s store.Store, verifier HumanVerifier, mailer Mailer, ba
 	return func(w http.ResponseWriter, r *http.Request) {
 		householdID, err := strconv.Atoi(r.PathValue("id"))
 		if err != nil {
-			http.Error(w, "This household is no longer available.", http.StatusNotFound)
+			http.Error(w, "This Blackbird Place Resident/Family is no longer available.", http.StatusNotFound)
 			return
 		}
 
@@ -63,13 +63,13 @@ func householdClaimPost(s store.Store, verifier HumanVerifier, mailer Mailer, ba
 		})
 		switch {
 		case errors.Is(err, store.ErrHouseholdNotFound):
-			http.Error(w, "This household is no longer available.", http.StatusNotFound)
+			http.Error(w, "This Blackbird Place Resident/Family is no longer available.", http.StatusNotFound)
 			return
 		case errors.Is(err, store.ErrHouseholdAlreadyClaimed):
-			http.Error(w, "Another giver has already adopted this household.", http.StatusConflict)
+			http.Error(w, "Another giver has already adopted this Blackbird Place Resident/Family.", http.StatusConflict)
 			return
 		case errors.Is(err, store.ErrEmailAlreadyClaimed):
-			http.Error(w, "This email address has already adopted a household.", http.StatusConflict)
+			http.Error(w, "This email address has already adopted a Blackbird Place Resident/Family.", http.StatusConflict)
 			return
 		case err != nil:
 			log.Printf("householdClaimPost: failed to claim household %d: %v", householdID, err)

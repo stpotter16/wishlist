@@ -25,9 +25,9 @@ func sendClaimEmail(ctx context.Context, mailer Mailer, to, link string, househo
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 15*time.Second)
 	defer cancel()
 
-	subject := fmt.Sprintf("Your link for Household %d", household.ID)
+	subject := fmt.Sprintf("Your link for Blackbird Place Resident/Family %d", household.ID)
 	if isNewLink {
-		subject = fmt.Sprintf("Your new link for Household %d", household.ID)
+		subject = fmt.Sprintf("Your new link for Blackbird Place Resident/Family %d", household.ID)
 	}
 	if err := mailer.Send(ctx, to, subject, claimEmailBody(link, household, isNewLink)); err != nil {
 		log.Printf("sendClaimEmail: failed to email the link for household %d: %v", household.ID, err)
@@ -42,12 +42,12 @@ func claimEmailBody(link string, household types.Household, isNewLink bool) stri
 	var b strings.Builder
 
 	if isNewLink {
-		fmt.Fprintf(&b, "Here is your new private link to Household %d. Your old link no longer works.\n\n", household.ID)
+		fmt.Fprintf(&b, "Here is your new private link to Blackbird Place Resident/Family %d. Your old link no longer works.\n\n", household.ID)
 	} else {
-		fmt.Fprintf(&b, "Thank you for adopting Household %d!\n\nHere is your private link to the household's wishlists:\n\n", household.ID)
+		fmt.Fprintf(&b, "Thank you for adopting Blackbird Place Resident/Family %d!\n\nHere is your private link to the Blackbird Place Resident/Family's wishlists:\n\n", household.ID)
 	}
 	fmt.Fprintf(&b, "%s\n\n", link)
-	b.WriteString("Keep this link to yourself. Anyone who has it can see the household.\n\n")
+	b.WriteString("Keep this link to yourself. Anyone who has it can see the Blackbird Place Resident/Family.\n\n")
 	b.WriteString("Below is a copy of the wishlists as of this email. The drive's organizers may update them, so check your link for the latest version.\n\n")
 	b.WriteString("Questions? Reply to this email to reach the organizers.\n")
 

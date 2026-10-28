@@ -113,7 +113,7 @@ func adminNewHouseholdGet() http.HandlerFunc {
 
 		props := householdFormProps{
 			viewProps:    viewProps{CspNonce: nonce, ActivePage: "dashboard"},
-			Heading:      "New household",
+			Heading:      "New Blackbird Place Resident/Family",
 			BackURL:      "/admin",
 			SubmitMethod: http.MethodPost,
 			SubmitURL:    "/admin/households",
@@ -157,7 +157,7 @@ func adminEditHouseholdGet(s store.Store) http.HandlerFunc {
 		householdURL := "/admin/households/" + strconv.Itoa(id)
 		props := householdFormProps{
 			viewProps:    viewProps{CspNonce: nonce, ActivePage: "dashboard"},
-			Heading:      "Edit Household " + strconv.Itoa(id),
+			Heading:      "Edit Blackbird Place Resident/Family " + strconv.Itoa(id),
 			BackURL:      householdURL,
 			SubmitMethod: http.MethodPut,
 			SubmitURL:    householdURL,
@@ -264,13 +264,13 @@ func adminClaimDelete(s store.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.Atoi(r.PathValue("id"))
 		if err != nil {
-			http.Error(w, "This household has no claim.", http.StatusNotFound)
+			http.Error(w, "This Blackbird Place Resident/Family has no claim.", http.StatusNotFound)
 			return
 		}
 
 		err = s.DeleteClaim(r.Context(), id)
 		if errors.Is(err, store.ErrClaimNotFound) {
-			http.Error(w, "This household has no claim.", http.StatusNotFound)
+			http.Error(w, "This Blackbird Place Resident/Family has no claim.", http.StatusNotFound)
 			return
 		}
 		if err != nil {
@@ -287,7 +287,7 @@ func adminClaimTokenPost(s store.Store, mailer Mailer, baseURL string) http.Hand
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.Atoi(r.PathValue("id"))
 		if err != nil {
-			http.Error(w, "This household has no claim.", http.StatusNotFound)
+			http.Error(w, "This Blackbird Place Resident/Family has no claim.", http.StatusNotFound)
 			return
 		}
 
@@ -300,7 +300,7 @@ func adminClaimTokenPost(s store.Store, mailer Mailer, baseURL string) http.Hand
 
 		err = s.ReplaceClaimToken(r.Context(), id, tokenHash)
 		if errors.Is(err, store.ErrClaimNotFound) {
-			http.Error(w, "This household has no claim.", http.StatusNotFound)
+			http.Error(w, "This Blackbird Place Resident/Family has no claim.", http.StatusNotFound)
 			return
 		}
 		if err != nil {
@@ -339,7 +339,7 @@ func adminHouseholdPut(s store.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.Atoi(r.PathValue("id"))
 		if err != nil {
-			http.Error(w, "This household doesn't exist.", http.StatusNotFound)
+			http.Error(w, "This Blackbird Place Resident/Family doesn't exist.", http.StatusNotFound)
 			return
 		}
 
@@ -351,7 +351,7 @@ func adminHouseholdPut(s store.Store) http.HandlerFunc {
 
 		err = s.UpdateHousehold(r.Context(), id, household)
 		if errors.Is(err, store.ErrHouseholdNotFound) {
-			http.Error(w, "This household doesn't exist.", http.StatusNotFound)
+			http.Error(w, "This Blackbird Place Resident/Family doesn't exist.", http.StatusNotFound)
 			return
 		}
 		if err != nil {
@@ -373,17 +373,17 @@ func adminHouseholdDelete(s store.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.Atoi(r.PathValue("id"))
 		if err != nil {
-			http.Error(w, "This household doesn't exist.", http.StatusNotFound)
+			http.Error(w, "This Blackbird Place Resident/Family doesn't exist.", http.StatusNotFound)
 			return
 		}
 
 		err = s.DeleteHousehold(r.Context(), id)
 		switch {
 		case errors.Is(err, store.ErrHouseholdNotFound):
-			http.Error(w, "This household doesn't exist.", http.StatusNotFound)
+			http.Error(w, "This Blackbird Place Resident/Family doesn't exist.", http.StatusNotFound)
 			return
 		case errors.Is(err, store.ErrHouseholdAlreadyClaimed):
-			http.Error(w, "Release this household's claim before deleting it.", http.StatusConflict)
+			http.Error(w, "Release this Blackbird Place Resident/Family's claim before deleting it.", http.StatusConflict)
 			return
 		case err != nil:
 			log.Printf("adminHouseholdDelete: failed to delete household %d: %v", id, err)

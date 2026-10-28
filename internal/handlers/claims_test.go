@@ -60,7 +60,7 @@ func TestClaimHouseholdGivesGiverPrivateLink(t *testing.T) {
 	// Collapse whitespace like a browser does, so template formatting doesn't
 	// matter.
 	body := strings.Join(strings.Fields(rec.Body.String()), " ")
-	if !strings.Contains(body, "You adopted Household 1") {
+	if !strings.Contains(body, "You adopted Blackbird Place Resident/Family 1") {
 		t.Errorf("private link is missing household heading")
 	}
 	if !strings.Contains(body, "Maria") {
@@ -80,7 +80,7 @@ func TestClaimHouseholdGivesGiverPrivateLink(t *testing.T) {
 	req = httptest.NewRequest(http.MethodGet, "/", nil)
 	rec = httptest.NewRecorder()
 	server.ServeHTTP(rec, req)
-	if strings.Contains(rec.Body.String(), "Household 1") {
+	if strings.Contains(rec.Body.String(), "Blackbird Place Resident/Family 1") {
 		t.Errorf("public listing still shows claimed household")
 	}
 
@@ -397,7 +397,7 @@ func TestClaimHouseholdEmailsGiverTheirLinkAndWishlist(t *testing.T) {
 			if got, want := email.to, "giver@example.com"; got != want {
 				t.Errorf("to=%q, want=%q", got, want)
 			}
-			if got, want := email.subject, "Your link for Household 1"; got != want {
+			if got, want := email.subject, "Your link for Blackbird Place Resident/Family 1"; got != want {
 				t.Errorf("subject=%q, want=%q", got, want)
 			}
 			for _, want := range []string{

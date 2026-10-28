@@ -1,12 +1,12 @@
-{{ define "title" }}Households{{ end }}
+{{ define "title" }}Blackbird Place Residents/Families{{ end }}
 {{ define "script-tags" }}{{ end }}
 {{ define "page-content" }}
   <div class="flex items-center justify-between gap-4">
-    <h1 class="text-2xl font-bold">Households</h1>
+    <h1 class="text-2xl font-bold">Blackbird Place Residents/Families</h1>
     <a
       href="/admin/households/new"
       class="inline-flex items-center justify-center rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-      >New household</a
+      >New Blackbird Place Resident/Family</a
     >
   </div>
   {{ if .Households }}
@@ -19,7 +19,10 @@
           >
             <div class="flex items-center justify-between gap-4">
               <div class="min-w-0">
-                <p class="text-lg font-semibold">Household {{ .ID }}</p>
+                <p class="text-lg font-semibold">
+                  Blackbird Place Resident/Family
+                  {{ .ID }}
+                </p>
                 <p class="text-sm text-muted">{{ .Kind.Label }}</p>
                 {{ if .IsClaimed }}
                   <p class="text-sm wrap-break-word text-muted">
@@ -59,9 +62,12 @@
     </ul>
   {{ else }}
     <div class="flex flex-col items-center gap-1 pt-16 text-center">
-      <p class="text-lg font-semibold">No households yet</p>
+      <p class="text-lg font-semibold">
+        No Blackbird Place Residents/Families yet
+      </p>
       <p class="text-muted">
-        Add a household from its intake sheets to get started.
+        Add a Blackbird Place Resident/Family from its intake sheets to get
+        started.
       </p>
     </div>
   {{ end }}
