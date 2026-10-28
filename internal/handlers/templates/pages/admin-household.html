@@ -49,6 +49,10 @@
           .then((claim) => {
             document.getElementById("new-link-input").value =
               window.location.origin + claim.url;
+            document.getElementById("new-link-status").textContent =
+              claim.emailSent
+                ? "The giver's old link no longer works. We emailed them this new one."
+                : "The giver's old link no longer works, and we couldn't email them the new one. Copy it and send it to them.";
             newLink.classList.remove("hidden");
           })
           .catch(showError)
@@ -223,9 +227,7 @@
         </div>
 
         <div id="new-link" class="mt-4 hidden">
-          <p class="text-sm text-muted">
-            The giver's old link no longer works. Send them this one.
-          </p>
+          <p id="new-link-status" class="text-sm text-muted"></p>
           <div class="mt-2 flex gap-2">
             <input
               id="new-link-input"

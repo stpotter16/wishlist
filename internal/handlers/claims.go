@@ -22,7 +22,7 @@ type HumanVerifier interface {
 	Verify(ctx context.Context, token string) (bool, error)
 }
 
-func householdClaimPost(s store.Store, verifier HumanVerifier) http.HandlerFunc {
+func householdClaimPost(s store.Store, verifier HumanVerifier, mailer Mailer, baseURL string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		householdID, err := strconv.Atoi(r.PathValue("id"))
 		if err != nil {
@@ -75,6 +75,15 @@ func householdClaimPost(s store.Store, verifier HumanVerifier) http.HandlerFunc 
 			log.Printf("householdClaimPost: failed to claim household %d: %v", householdID, err)
 			http.Error(w, "Server issue - try again later", http.StatusInternalServerError)
 			return
+		}
+
+		// The claim stands even if the email doesn't go out. The giver still
+		// sees the link on screen, and an admin can re-send it.
+		household, err := s.GetClaimedHousehold(r.Context(), tokenHash)
+		if err != nil {
+			log.Printf("householdClaimPost: failed to load household %d for email: %v", householdID, err)
+		} else {
+			sendClaimEmail(r.Context(), mailer, giver.Email, baseURL+"/claims/"+token, household, false)
 		}
 
 		w.Header().Set("Cache-Control", "no-store")

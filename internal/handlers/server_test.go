@@ -21,16 +21,26 @@ import (
 // directly.
 func newTestServer(t *testing.T) (http.Handler, db.DB) {
 	t.Helper()
-	return newTestServerWithClock(t, func() time.Time {
-		return time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-	})
+	return newTestServerWithParams(t, testServerParams{})
 }
 
 // newTestServerWithClock is newTestServer with a clock the test controls.
 func newTestServerWithClock(t *testing.T, now func() time.Time) (http.Handler, db.DB) {
 	t.Helper()
-	return newTestServerWithVerifier(t, now, &fakeHumanVerifier{isHuman: true})
+	return newTestServerWithParams(t, testServerParams{now: now})
 }
+
+// testServerParams overrides the test server's dependencies. Fields left
+// empty get a fixed clock, a bot check that passes, and a mailer that
+// succeeds.
+type testServerParams struct {
+	now      func() time.Time
+	verifier handlers.HumanVerifier
+	mailer   handlers.Mailer
+}
+
+// testBaseURL is the base URL the test server puts in emailed links.
+const testBaseURL = "https://wishlist.example.org"
 
 // fakeHumanVerifier stands in for Cloudflare Turnstile, so tests never call
 // Cloudflare. It records the last token it was asked to check.
@@ -45,10 +55,38 @@ func (f *fakeHumanVerifier) Verify(ctx context.Context, token string) (bool, err
 	return f.isHuman, f.err
 }
 
-// newTestServerWithVerifier is newTestServerWithClock with a bot check the
-// test controls.
-func newTestServerWithVerifier(t *testing.T, now func() time.Time, verifier handlers.HumanVerifier) (http.Handler, db.DB) {
+type sentEmail struct {
+	to      string
+	subject string
+	body    string
+}
+
+// fakeMailer stands in for Resend, so tests never send email. It records
+// every email it was asked to send, including ones it fails.
+type fakeMailer struct {
+	err  error
+	sent []sentEmail
+}
+
+func (f *fakeMailer) Send(ctx context.Context, to, subject, body string) error {
+	f.sent = append(f.sent, sentEmail{to: to, subject: subject, body: body})
+	return f.err
+}
+
+func newTestServerWithParams(t *testing.T, params testServerParams) (http.Handler, db.DB) {
 	t.Helper()
+
+	if params.now == nil {
+		params.now = func() time.Time {
+			return time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+		}
+	}
+	if params.verifier == nil {
+		params.verifier = &fakeHumanVerifier{isHuman: true}
+	}
+	if params.mailer == nil {
+		params.mailer = &fakeMailer{}
+	}
 
 	d, err := db.New(t.TempDir())
 	if err != nil {
@@ -70,7 +108,7 @@ func newTestServerWithVerifier(t *testing.T, now func() time.Time, verifier hand
 		t.Fatalf("sessions.New: %v", err)
 	}
 
-	return handlers.NewServer(store, sm, authentication.New(store), "dummy-site-key", verifier, now), d
+	return handlers.NewServer(store, sm, authentication.New(store), "dummy-site-key", params.verifier, params.mailer, testBaseURL, params.now), d
 }
 
 // loginAsAdmin seeds an admin and logs in through POST /login, returning the

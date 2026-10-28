@@ -17,6 +17,8 @@ func addRoutes(
 	authenticator authentication.Authenticator,
 	turnstileSiteKey string,
 	humanVerifier HumanVerifier,
+	mailer Mailer,
+	baseURL string,
 	now func() time.Time,
 ) {
 	// Static
@@ -45,7 +47,7 @@ func addRoutes(
 		Window: time.Hour,
 		Now:    now,
 	})
-	mux.Handle("POST /households/{id}/claim", claimRateLimit(householdClaimPost(store, humanVerifier)))
+	mux.Handle("POST /households/{id}/claim", claimRateLimit(householdClaimPost(store, humanVerifier, mailer, baseURL)))
 
 	// Auth
 	mux.HandleFunc("POST /login", loginPost(authenticator, sessionManager))
@@ -57,5 +59,5 @@ func addRoutes(
 	mux.Handle("PUT /admin/households/{id}", apiAuthRequired(adminHouseholdPut(store)))
 	mux.Handle("DELETE /admin/households/{id}", apiAuthRequired(adminHouseholdDelete(store)))
 	mux.Handle("DELETE /admin/households/{id}/claim", apiAuthRequired(adminClaimDelete(store)))
-	mux.Handle("POST /admin/households/{id}/claim/token", apiAuthRequired(adminClaimTokenPost(store)))
+	mux.Handle("POST /admin/households/{id}/claim/token", apiAuthRequired(adminClaimTokenPost(store, mailer, baseURL)))
 }

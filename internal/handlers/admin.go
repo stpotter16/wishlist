@@ -283,7 +283,7 @@ func adminClaimDelete(s store.Store) http.HandlerFunc {
 	}
 }
 
-func adminClaimTokenPost(s store.Store) http.HandlerFunc {
+func adminClaimTokenPost(s store.Store, mailer Mailer, baseURL string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.Atoi(r.PathValue("id"))
 		if err != nil {
@@ -309,11 +309,27 @@ func adminClaimTokenPost(s store.Store) http.HandlerFunc {
 			return
 		}
 
+		// The new token is already saved, so the admin gets the link even if
+		// the email fails and can send it themselves.
+		emailSent := false
+		claim, err := s.GetClaim(r.Context(), id)
+		if err != nil {
+			log.Printf("adminClaimTokenPost: failed to load claim on household %d for email: %v", id, err)
+		}
+		household, householdErr := s.GetHousehold(r.Context(), id)
+		if householdErr != nil {
+			log.Printf("adminClaimTokenPost: failed to load household %d for email: %v", id, householdErr)
+		}
+		if err == nil && householdErr == nil {
+			emailSent = sendClaimEmail(r.Context(), mailer, claim.Giver.Email, baseURL+"/claims/"+token, household, true)
+		}
+
 		w.Header().Set("Cache-Control", "no-store")
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(struct {
-			URL string `json:"url"`
-		}{URL: "/claims/" + token}); err != nil {
+			URL       string `json:"url"`
+			EmailSent bool   `json:"emailSent"`
+		}{URL: "/claims/" + token, EmailSent: emailSent}); err != nil {
 			log.Printf("adminClaimTokenPost: failed to write response: %v", err)
 		}
 	}

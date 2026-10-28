@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -1018,5 +1019,63 @@ func TestAdminCreateHouseholdLabelsAgeZeroAsInfant(t *testing.T) {
 	}
 	if got, want := label, "Infant"; got != want {
 		t.Errorf("label=%q, want=%q", got, want)
+	}
+}
+
+func TestAdminIssueNewLinkEmailsGiver(t *testing.T) {
+	for _, tt := range []struct {
+		explanation   string
+		mailer        *fakeMailer
+		emailSentWant bool
+	}{
+		{
+			"admin learns the new link was emailed",
+			&fakeMailer{},
+			true,
+		},
+		{
+			"admin still gets the link when the email fails",
+			&fakeMailer{err: errors.New("dummy send failure")},
+			false,
+		},
+	} {
+		t.Run(tt.explanation, func(t *testing.T) {
+			server, d := newTestServerWithParams(t, testServerParams{mailer: tt.mailer})
+			cookie := loginAsAdmin(t, server, d)
+			seedClaimedAndUnclaimedHouseholds(t, d)
+
+			req := httptest.NewRequest(http.MethodPost, "/admin/households/1/claim/token", nil)
+			req.AddCookie(cookie)
+			rec := httptest.NewRecorder()
+			server.ServeHTTP(rec, req)
+
+			if got, want := rec.Code, http.StatusOK; got != want {
+				t.Fatalf("status=%d, want=%d", got, want)
+			}
+			var claim struct {
+				URL       string `json:"url"`
+				EmailSent bool   `json:"emailSent"`
+			}
+			if err := json.NewDecoder(rec.Body).Decode(&claim); err != nil {
+				t.Fatalf("decode response: %v", err)
+			}
+			if got, want := claim.EmailSent, tt.emailSentWant; got != want {
+				t.Errorf("emailSent=%v, want=%v", got, want)
+			}
+
+			if got, want := len(tt.mailer.sent), 1; got != want {
+				t.Fatalf("sent %d emails, want %d", got, want)
+			}
+			email := tt.mailer.sent[0]
+			if got, want := email.to, "giver@example.com"; got != want {
+				t.Errorf("to=%q, want=%q", got, want)
+			}
+			if got, want := email.subject, "Your new link for Household 1"; got != want {
+				t.Errorf("subject=%q, want=%q", got, want)
+			}
+			if !strings.Contains(email.body, testBaseURL+claim.URL) {
+				t.Errorf("email body is missing the new link %q", testBaseURL+claim.URL)
+			}
+		})
 	}
 }

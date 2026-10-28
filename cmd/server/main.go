@@ -7,13 +7,16 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
+	"strings"
 	"time"
 
 	"github.com/stpotter16/wishlist/internal/handlers"
 	"github.com/stpotter16/wishlist/internal/handlers/authentication"
 	"github.com/stpotter16/wishlist/internal/handlers/sessions"
+	"github.com/stpotter16/wishlist/internal/resend"
 	"github.com/stpotter16/wishlist/internal/store/db"
 	"github.com/stpotter16/wishlist/internal/store/sqlite"
 	"github.com/stpotter16/wishlist/internal/turnstile"
@@ -64,7 +67,34 @@ func run(
 	}
 	humanVerifier := turnstile.New(turnstileSecretKey, turnstile.SiteverifyURL)
 
-	handler := handlers.NewServer(store, sessionManager, authenticator, turnstileSiteKey, humanVerifier, time.Now)
+	// Emails need absolute links. Never build them from a request's Host
+	// header, which the client controls.
+	baseURL := strings.TrimSuffix(getenv("WISHLIST_BASE_URL"), "/")
+	if baseURL == "" {
+		return errors.New("WISHLIST_BASE_URL environment variable not set")
+	}
+	if u, err := url.Parse(baseURL); err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" {
+		return fmt.Errorf("WISHLIST_BASE_URL must be an absolute http(s) URL, got %q", baseURL)
+	}
+
+	mailerParams := resend.Params{
+		APIKey:  getenv("WISHLIST_RESEND_API_KEY"),
+		From:    getenv("WISHLIST_EMAIL_FROM"),
+		ReplyTo: getenv("WISHLIST_EMAIL_REPLY_TO"),
+		URL:     resend.EmailsURL,
+	}
+	for name, value := range map[string]string{
+		"WISHLIST_RESEND_API_KEY": mailerParams.APIKey,
+		"WISHLIST_EMAIL_FROM":     mailerParams.From,
+		"WISHLIST_EMAIL_REPLY_TO": mailerParams.ReplyTo,
+	} {
+		if value == "" {
+			return fmt.Errorf("%s environment variable not set", name)
+		}
+	}
+	mailer := resend.New(mailerParams)
+
+	handler := handlers.NewServer(store, sessionManager, authenticator, turnstileSiteKey, humanVerifier, mailer, baseURL, time.Now)
 	port := getenv("PORT")
 	if port == "" {
 		port = "8080"

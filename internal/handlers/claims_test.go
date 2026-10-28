@@ -298,9 +298,7 @@ func TestClaimHouseholdRequiresBotCheck(t *testing.T) {
 		},
 	} {
 		t.Run(tt.explanation, func(t *testing.T) {
-			server, d := newTestServerWithVerifier(t, func() time.Time {
-				return time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-			}, tt.verifier)
+			server, d := newTestServerWithParams(t, testServerParams{verifier: tt.verifier})
 
 			if _, err := d.Exec(context.Background(), `
 			INSERT INTO household (id, kind, created_time, last_modified_time) VALUES
@@ -332,6 +330,93 @@ func TestClaimHouseholdRequiresBotCheck(t *testing.T) {
 			}
 			if got, want := claims == 1, tt.claimCreatedWant; got != want {
 				t.Errorf("claim created=%v, want=%v", got, want)
+			}
+		})
+	}
+}
+
+func TestClaimHouseholdEmailsGiverTheirLinkAndWishlist(t *testing.T) {
+	for _, tt := range []struct {
+		explanation string
+		mailer      *fakeMailer
+	}{
+		{
+			"giver gets an email when sending works",
+			&fakeMailer{},
+		},
+		{
+			"claim still goes through when the email fails",
+			&fakeMailer{err: errors.New("dummy send failure")},
+		},
+	} {
+		t.Run(tt.explanation, func(t *testing.T) {
+			server, d := newTestServerWithParams(t, testServerParams{mailer: tt.mailer})
+
+			if _, err := d.Exec(context.Background(), `
+			INSERT INTO household (id, kind, created_time, last_modified_time) VALUES
+				(1, 'family', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+			INSERT INTO household_member (
+				id, household_id, first_name, last_initial, label, age, gender,
+				shirt_size, prefers_unscented, created_time, last_modified_time
+			) VALUES
+				(10, 1, 'Maria', 'G', 'Mom', NULL, '', 'M', 1,
+					'2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+				(11, 1, 'Ana', '', 'Child, 7', 7, 'Girl', '', 0,
+					'2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+			INSERT INTO wishlist_item (
+				household_member_id, kind, name, notes, created_time,
+				last_modified_time
+			) VALUES
+				(10, 'need', 'Winter coat', 'size M', '2026-01-01T00:00:00Z',
+					'2026-01-01T00:00:00Z'),
+				(11, 'wish', 'Art set', '', '2026-01-01T00:00:00Z',
+					'2026-01-01T00:00:00Z');
+			`); err != nil {
+				t.Fatalf("seed: %v", err)
+			}
+
+			req := httptest.NewRequest(http.MethodPost, "/households/1/claim", strings.NewReader(
+				`{"name": "Giver", "email": "giver@example.com", "phone": "555-0100", "turnstileToken": "dummy-token"}`))
+			rec := httptest.NewRecorder()
+			server.ServeHTTP(rec, req)
+
+			if got, want := rec.Code, http.StatusCreated; got != want {
+				t.Fatalf("status=%d, want=%d, body=%q", got, want, rec.Body.String())
+			}
+			var claim struct {
+				URL string `json:"url"`
+			}
+			if err := json.NewDecoder(rec.Body).Decode(&claim); err != nil {
+				t.Fatalf("decode claim response: %v", err)
+			}
+
+			if got, want := len(tt.mailer.sent), 1; got != want {
+				t.Fatalf("sent %d emails, want %d", got, want)
+			}
+			email := tt.mailer.sent[0]
+			if got, want := email.to, "giver@example.com"; got != want {
+				t.Errorf("to=%q, want=%q", got, want)
+			}
+			if got, want := email.subject, "Your link for Household 1"; got != want {
+				t.Errorf("subject=%q, want=%q", got, want)
+			}
+			for _, want := range []string{
+				testBaseURL + claim.URL,
+				"== Mom ==",
+				"  - Winter coat (size M)",
+				"Shirt size: M",
+				"Sensitive skin: Prefers unscented products",
+				"== Child, 7, Girl ==",
+				"  - Art set",
+			} {
+				if !strings.Contains(email.body, want) {
+					t.Errorf("email body is missing %q:\n%s", want, email.body)
+				}
+			}
+			for _, name := range []string{"Maria", "Ana"} {
+				if strings.Contains(email.body, name) {
+					t.Errorf("email body contains recipient name %q", name)
+				}
 			}
 		})
 	}

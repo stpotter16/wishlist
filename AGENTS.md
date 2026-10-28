@@ -4,34 +4,12 @@ Bootstrapped from [mtlynch's source](https://codeberg.org/mtlynch/go-app-starter
 
 Wishlist is a web app for an annual adopt-a-family gift drive.
 
-## Open decisions: resolve before launch
-
-> [!IMPORTANT]
-> One product decision is still open, and stakeholders are test-driving the app to inform it. Do not pick an answer or build the feature without the user's explicit decision. Whenever a task touches claims, giver links, or launch readiness, remind the user that this decision is still open.
-
-1. **Emailing giver links.** The app shows a giver's private link only on screen after claiming. A giver who loses it must ask an admin to issue a new one.
-   - Open questions: which email provider, whether to send the link automatically on claim, and whether admins' "Issue new link" also sends it.
-   - The database stores only token hashes, so any re-send must issue a new token, which invalidates the old link.
-   - Solution space (explored 2026-10-23, nothing chosen):
-     - **When to send.** Choose one:
-       - Send on claim and still show the link on screen. Simplest, and gives givers a copy they can find later, but adds no abuse protection.
-       - Send on claim and show the link only in the email. A claimer must control a real mailbox to see the household, which deters fake-email claims. Disposable mailboxes still get through, and a giver whose email bounces or lands in spam is stuck until an admin re-issues the link.
-       - Hold the claim as pending until the giver clicks an emailed confirmation link, then release it automatically if no one confirms within a set window. This is the strongest email-based gate, but it needs a pending claim state, an expiry job or lazy expiry check, and a schema migration. It would add a barrier for givers, which the [claim gating decision](#claim-gating) chose to avoid.
-     - **Admin re-send.** "Issue new link" could email the new link directly, show it for the admin to copy, or both. Emailing it directly keeps the token off the admin's screen and clipboard.
-     - **Provider.** Volume is tiny (one email per claim, at most a few hundred per season), so any free tier works. Candidates: Postmark (strong deliverability, transactional only), Resend (simple HTTP API), AWS SES (cheapest, more setup), or plain SMTP through an existing mailbox. An HTTP API needs no new Go dependency, since `net/http` can call it.
-     - **Deliverability.** Sending from a custom domain needs SPF and DKIM records. The app currently runs on a `fly.dev` hostname, so a custom domain is likely a prerequisite.
-     - **Absolute URLs.** Both claim endpoints return a relative `/claims/<token>` path. An email needs an absolute URL, so the server would need a configured base URL (for example a new required env var). Do not build it from the request's `Host` header.
-     - **Implementation constraints.**
-       - Define a small mailer interface in `internal/handlers` and pass a fake in tests, so tests never send real email.
-       - Never log the email body or the link, since both carry the token. A dev mailer that prints emails to stdout would break this rule.
-       - Send after `CreateClaim` commits. If sending fails, decide whether the claim stands (and an admin re-sends) or rolls back.
-       - The provider API key becomes another Fly secret.
-
 ## Must do before launch
 
-The current Fly deployment is a stakeholder test drive. It runs without Litestream, so the database resets on every deploy. This item must ship before the app goes to production:
+The current Fly deployment is a stakeholder test drive. It runs without Litestream, so the database resets on every deploy. These items must ship before the app goes to production:
 
-1. **Turn Litestream back on.** Create a bucket and set the `LITESTREAM_BUCKET`, `LITESTREAM_ENDPOINT`, `LITESTREAM_ACCESS_KEY_ID`, and `LITESTREAM_SECRET_ACCESS_KEY` secrets, so production data survives deploys and machine restarts. Without them, `docker-entrypoint` starts the app without replication.
+1. **Set up the custom domain and Resend.** Point a subdomain at the app (`fly certs add <hostname>`, plus the DNS record Fly gives), and add the hostname to the Turnstile widget. Verify the sending domain in Resend with its SPF and DKIM records. Then set the `WISHLIST_RESEND_API_KEY`, `WISHLIST_EMAIL_FROM`, `WISHLIST_EMAIL_REPLY_TO`, and `WISHLIST_BASE_URL` secrets. The server refuses to start without them, so this has to happen before the next deploy.
+2. **Turn Litestream back on.** Create a bucket and set the `LITESTREAM_BUCKET`, `LITESTREAM_ENDPOINT`, `LITESTREAM_ACCESS_KEY_ID`, and `LITESTREAM_SECRET_ACCESS_KEY` secrets, so production data survives deploys and machine restarts. Without them, `docker-entrypoint` starts the app without replication.
 
 ## Roles
 
@@ -73,10 +51,33 @@ The current Fly deployment is a stakeholder test drive. It runs without Litestre
 - Only admins can release a claim. Givers cannot unclaim a household.
 - Browsing and claiming unclaimed households requires no login or access code. See [Claim gating](#claim-gating).
 - Givers return to their claimed household through a private link that carries a random token.
-  - Whether to email the link is an [open decision](#open-decisions-resolve-before-launch).
+  - Givers also get the link by email. See [Emailing giver links](#emailing-giver-links).
   - The database stores only the SHA-256 hash of each token (`internal/auth/token.go`).
   - Never log a token. The request logger redacts paths under `/claims/`.
   - Pages under `/claims/` send `Cache-Control: no-store` and `Referrer-Policy: no-referrer`.
+
+## Emailing giver links
+
+Decided with the user from 2026-10-22 to 2026-10-27.
+
+- The app sends email through Resend's HTTP API (`internal/resend`), with no new Go dependency.
+- On claim, the giver gets an email with the link, and the link still shows on screen. Turnstile already guards against bots, so the email gives givers a copy to find later rather than acting as a gate.
+  - Gated options were rejected as the kind of barrier the [claim gating decision](#claim-gating) avoids: showing the link only in the email, or holding the claim until the giver confirms by email.
+- Admins' "Issue new link" emails the new link to the giver and also shows it to the admin, in case the giver's email bounces. The response's `emailSent` tells the page which message to show.
+- If sending fails, the claim stands and the failure is logged. Rolling back would cost a giver their household over an email problem, and an admin can re-send with "Issue new link".
+- The email is plain text (`claimEmailBody` in `internal/handlers/emails.go`). It has the household label, the private link, a note that replies reach the organizers, and the household's wishlist: each member's needs, wishes, sizes, and preferences.
+  - Members appear by label ("Mom", "Child, 7"), never by name, since an email can be forwarded or kept for years.
+  - The wishlist in the email is a snapshot. Admin edits don't reach it, so the email points givers to the private link for the current list.
+- The from and reply-to addresses are config, not code, since Resend takes both on each send.
+  - The from address must be on a domain verified in Resend. The mailbox itself doesn't need to exist, so `noreply@` works.
+  - The reply-to can be any address the organizers read, on any domain. Resend doesn't verify it.
+- Links in emails use `WISHLIST_BASE_URL`. Never build them from the request's `Host` header, which the client controls.
+  - Serve the app from a subdomain of the sending domain, and use that as the base URL. Links to `fly.dev` in an email from the drive's domain look like phishing to givers and spam filters, and the drive's own domain survives a move off Fly.
+  - The custom domain must also be on the Turnstile widget, or claims fail there. Fly's proxy forwards `Host` unchanged, which the CSRF fallback under [Browser support](#browser-support) needs.
+  - `app-wishlist.fly.dev` keeps working alongside the custom domain. Admin sessions are per hostname, so admins log in separately on each.
+- Handlers depend on the `Mailer` interface, and tests pass a fake, so tests never send email.
+- Never log the email body or the link, since both carry the token. Mailer errors must not include the body. A dev mailer that prints emails to stdout would break this rule.
+- The database stores only token hashes, so a re-send must issue a new token, which invalidates the old link.
 
 ## Claim gating
 
@@ -86,7 +87,7 @@ Stakeholders decided on 2026-10-25 to keep claiming open, because codes, approva
 - Claims require a Cloudflare Turnstile check in Managed mode, which the user chose on 2026-10-25 because it stops bots that post straight to the claim endpoint. Most givers never see a challenge, so it stays within the no-barriers decision above.
   - The claim form renders the widget, and the page script sends its token as `turnstileToken`. The server checks it with Cloudflare's siteverify API (`internal/turnstile`) before creating the claim.
   - Tokens are single-use, so the form resets the widget after any failed claim.
-  - The widget is set up in the Cloudflare dashboard in Managed mode for the app's `fly.dev` hostname. If a custom domain is added, add it to the widget's hostnames too, or the widget fails on that domain.
+  - The widget is set up in the Cloudflare dashboard in Managed mode. Its hostnames must include every hostname that serves the app, `app-wishlist.fly.dev` and the custom domain, or the widget fails there.
   - Verification fails closed. If Cloudflare is unreachable or rejects the secret key, the claim gets `503` rather than skipping the check.
   - Handlers depend on the `HumanVerifier` interface, and tests pass a fake, so tests never call Cloudflare.
   - A honeypot field was considered and rejected. The form already submits through JavaScript, which stops the non-JS bots a honeypot catches, and bots that post JSON directly skip hidden fields.
@@ -111,7 +112,7 @@ Stakeholders decided on 2026-10-25 to keep claiming open, because codes, approva
 - Public routes (givers, no login):
   - `GET /`: unclaimed households, each shown as "Household N" with its kind and member labels.
   - `GET /households/{id}`: a household's members, sizes, preferences, needs, and wishes. Returns 404 once the household is claimed.
-  - `POST /households/{id}/claim`: takes the giver's name, email, phone, and Turnstile token; responds with the giver's private link. Returns 403 if the [Turnstile check](#claim-gating) fails, 503 if Cloudflare can't be reached, 409 if the household is already claimed or the email has already claimed a household, and 429 past the [rate limit](#claim-gating).
+  - `POST /households/{id}/claim`: takes the giver's name, email, phone, and Turnstile token; responds with the giver's private link and [emails it](#emailing-giver-links) to the giver. Returns 403 if the [Turnstile check](#claim-gating) fails, 503 if Cloudflare can't be reached, 409 if the household is already claimed or the email has already claimed a household, and 429 past the [rate limit](#claim-gating).
   - `GET /claims/{token}`: the giver's private view of their household.
 - Admin routes (session required):
   - `GET /login`, `POST /login`, `POST /logout`.
@@ -123,7 +124,7 @@ Stakeholders decided on 2026-10-25 to keep claiming open, because codes, approva
   - `PUT /admin/households/{id}`: replaces a household's kind, members, and wishlist items in one transaction, with the same body as `POST /admin/households`. Members and items get new IDs. A claim on the household is kept.
   - `DELETE /admin/households/{id}`: deletes an unclaimed household. Returns 409 while the household is claimed, so admins must release the claim first.
   - `DELETE /admin/households/{id}/claim`: releases a claim.
-  - `POST /admin/households/{id}/claim/token`: replaces the giver's link token and returns the new link, so admins can re-send it.
+  - `POST /admin/households/{id}/claim/token`: replaces the giver's link token, emails the new link to the giver, and returns the link with `emailSent`, so admins can send it themselves if the email failed.
 
 ## Stack
 
@@ -150,6 +151,10 @@ Stakeholders decided on 2026-10-25 to keep claiming open, because codes, approva
 - The server requires these environment variables:
   - `WISHLIST_DB_PATH`: directory that holds `wishlist.sqlite`.
   - `WISHLIST_SESSION_ENV_KEY`: session signing key. Generate one with `make secrets/hmac`.
+  - `WISHLIST_BASE_URL`: the absolute URL the app is served from, such as `https://wishlist.example.org`, used for links in emails. Use the custom domain, not `fly.dev`. See [Emailing giver links](#emailing-giver-links).
+  - `WISHLIST_RESEND_API_KEY`: Resend's API key. Locally, a dummy key works: sends fail and get logged, and claims still go through.
+  - `WISHLIST_EMAIL_FROM`: the sender on giver emails, such as `Wishlist <noreply@example.org>`. It must be on a domain verified in Resend, or Resend rejects the send. The mailbox doesn't need to exist.
+  - `WISHLIST_EMAIL_REPLY_TO`: where givers' replies go. It can be any address the organizers read, on any domain, since Resend doesn't verify it.
   - `WISHLIST_TURNSTILE_SITE_KEY` and `WISHLIST_TURNSTILE_SECRET_KEY`: the Cloudflare Turnstile widget's keys. `.env.example` uses Cloudflare's test keys, which always pass, so local development needs no Cloudflare account.
   - `PORT` (optional): listen port, defaults to `8080`.
 - Copy `.env.example` to `.env`, fill it in, and `source .env` before running the server.
