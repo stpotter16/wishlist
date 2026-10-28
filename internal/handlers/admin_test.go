@@ -1072,7 +1072,7 @@ func TestAdminIssueNewLinkEmailsGiver(t *testing.T) {
 			if got, want := email.to, "giver@example.com"; got != want {
 				t.Errorf("to=%q, want=%q", got, want)
 			}
-			if got, want := email.subject, "Your new link for Blackbird Place Resident/Family 1"; got != want {
+			if got, want := email.subject, "Your new link for Maria"; got != want {
 				t.Errorf("subject=%q, want=%q", got, want)
 			}
 			if !strings.Contains(email.body, testBaseURL+claim.URL) {

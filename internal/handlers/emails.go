@@ -25,9 +25,9 @@ func sendClaimEmail(ctx context.Context, mailer Mailer, to, link string, househo
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 15*time.Second)
 	defer cancel()
 
-	subject := fmt.Sprintf("Your link for Blackbird Place Resident/Family %d", household.ID)
+	subject := fmt.Sprintf("Your link for %s", household.HeadName())
 	if isNewLink {
-		subject = fmt.Sprintf("Your new link for Blackbird Place Resident/Family %d", household.ID)
+		subject = fmt.Sprintf("Your new link for %s", household.HeadName())
 	}
 	if err := mailer.Send(ctx, to, subject, claimEmailBody(link, household, isNewLink)); err != nil {
 		log.Printf("sendClaimEmail: failed to email the link for household %d: %v", household.ID, err)
@@ -36,15 +36,13 @@ func sendClaimEmail(ctx context.Context, mailer Mailer, to, link string, househo
 	return true
 }
 
-// claimEmailBody shows members by label, never by name, since an email can be
-// forwarded or kept for years.
 func claimEmailBody(link string, household types.Household, isNewLink bool) string {
 	var b strings.Builder
 
 	if isNewLink {
-		fmt.Fprintf(&b, "Here is your new private link to Blackbird Place Resident/Family %d. Your old link no longer works.\n\n", household.ID)
+		fmt.Fprintf(&b, "Here is your new private link to %s's wishlists. Your old link no longer works.\n\n", household.HeadName())
 	} else {
-		fmt.Fprintf(&b, "Thank you for adopting Blackbird Place Resident/Family %d!\n\nHere is your private link to the Blackbird Place Resident/Family's wishlists:\n\n", household.ID)
+		fmt.Fprintf(&b, "Thank you for adopting %s!\n\nHere is your private link to the Blackbird Place Resident/Family's wishlists:\n\n", household.HeadName())
 	}
 	fmt.Fprintf(&b, "%s\n\n", link)
 	b.WriteString("Keep this link to yourself. Anyone who has it can see the Blackbird Place Resident/Family.\n\n")
@@ -53,11 +51,11 @@ func claimEmailBody(link string, household types.Household, isNewLink bool) stri
 
 	for _, m := range household.Members {
 		b.WriteString("\n")
-		heading := m.Label
+		label := m.Label
 		if m.Gender != "" {
-			heading += ", " + m.Gender
+			label += ", " + m.Gender
 		}
-		fmt.Fprintf(&b, "== %s ==\n", heading)
+		fmt.Fprintf(&b, "== %s (%s) ==\n", m.Name(), label)
 
 		writeItems(&b, "Needs", m.Needs)
 		writeItems(&b, "Wishes", m.Wishes)

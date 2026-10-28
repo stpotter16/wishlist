@@ -31,7 +31,7 @@ The current Fly deployment is a stakeholder test drive. It runs without Litestre
   - A family (`family`): a mom and her children.
   - A single woman (`single`): one woman living on her own.
   - Admins pick the kind on the household form. The server rejects a family without a child and a single woman's household with more than one member, so a forgotten child can't turn a family into a single woman.
-  - The app shows a household by a label such as "Blackbird Place Resident/Family 12", plus its kind ("Family" or "Single woman"). The public listing is the exception: it titles each card by the head of the household's name and omits the kind. Stakeholders asked for this on 2026-10-27.
+  - The app shows a household by a label such as "Blackbird Place Resident/Family 12", plus its kind ("Family" or "Single woman"). The public listing and the giver's claim page are the exceptions: they title the household by the head of the household's name and omit the kind. Stakeholders asked for this on 2026-10-27.
   - The public listing is a single column on phones and a three-column grid from Tailwind's `lg` breakpoint (1024px) up. Stakeholders asked for this on 2026-10-27.
   - The UI never says "household". It says "Blackbird Place Resident/Family" (plural "Blackbird Place Residents/Families"). Code, routes, and the database keep "household".
 - Each household member has their own wishlist.
@@ -44,7 +44,7 @@ The current Fly deployment is a stakeholder test drive. It runs without Litestre
 - Keep recipient data minimal. Store only these names, and nothing else that identifies a recipient (no full last names, addresses, or phone numbers):
   - The head of the household's first name and last initial, shown as "Maria G.". The server accepts exactly one letter for the initial.
   - Each child's first name only.
-  - Names appear on the household's detail pages: the public household page, the giver's claim page, and the admin page. The public listing also shows the head of the household's name as each card's title. Otherwise, listings show only member labels.
+  - Names appear on the household's detail pages: the public household page, the giver's claim page, and the admin page. The public listing also shows the head of the household's name as each card's title. The giver's emails name every member too. Otherwise, listings show only member labels.
   - The public household page needs no login, so anyone with the URL can see these names before claiming. See [Claim gating](#claim-gating).
 
 ## Claims
@@ -71,8 +71,8 @@ Decided with the user from 2026-10-22 to 2026-10-27.
   - Gated options were rejected as the kind of barrier the [claim gating decision](#claim-gating) avoids: showing the link only in the email, or holding the claim until the giver confirms by email.
 - Admins' "Issue new link" emails the new link to the giver and also shows it to the admin, in case the giver's email bounces. The response's `emailSent` tells the page which message to show.
 - If sending fails, the claim stands and the failure is logged. Rolling back would cost a giver their household over an email problem, and an admin can re-send with "Issue new link".
-- The email is plain text (`claimEmailBody` in `internal/handlers/emails.go`). It has the household label, the private link, a note that replies reach the organizers, and the household's wishlist: each member's needs, wishes, sizes, and preferences.
-  - Members appear by label ("Mom", "Child, 7"), never by name, since an email can be forwarded or kept for years.
+- The email is plain text (`claimEmailBody` in `internal/handlers/emails.go`). It names the household by the head of the household's name (in the subject too), and has the private link, a note that replies reach the organizers, and the household's wishlist: each member's needs, wishes, sizes, and preferences.
+  - Members appear by name and label, such as "Ana (Child, 7, Girl)". An email can be forwarded or kept for years, so this spreads recipient names further than the pages do. Stakeholders accepted that risk on 2026-10-27.
   - The wishlist in the email is a snapshot. Admin edits don't reach it, so the email points givers to the private link for the current list.
 - The from and reply-to addresses are config, not code, since Resend takes both on each send.
   - The from address must be on a domain verified in Resend. The mailbox itself doesn't need to exist, so `noreply@` works.

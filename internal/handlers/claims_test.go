@@ -60,7 +60,7 @@ func TestClaimHouseholdGivesGiverPrivateLink(t *testing.T) {
 	// Collapse whitespace like a browser does, so template formatting doesn't
 	// matter.
 	body := strings.Join(strings.Fields(rec.Body.String()), " ")
-	if !strings.Contains(body, "You adopted Blackbird Place Resident/Family 1") {
+	if !strings.Contains(body, "You adopted Maria") {
 		t.Errorf("private link is missing household heading")
 	}
 	if !strings.Contains(body, "Maria") {
@@ -397,25 +397,21 @@ func TestClaimHouseholdEmailsGiverTheirLinkAndWishlist(t *testing.T) {
 			if got, want := email.to, "giver@example.com"; got != want {
 				t.Errorf("to=%q, want=%q", got, want)
 			}
-			if got, want := email.subject, "Your link for Blackbird Place Resident/Family 1"; got != want {
+			if got, want := email.subject, "Your link for Maria G."; got != want {
 				t.Errorf("subject=%q, want=%q", got, want)
 			}
 			for _, want := range []string{
 				testBaseURL + claim.URL,
-				"== Mom ==",
+				"Thank you for adopting Maria G.!",
+				"== Maria G. (Mom) ==",
 				"  - Winter coat (size M)",
 				"Shirt size: M",
 				"Sensitive skin: Prefers unscented products",
-				"== Child, 7, Girl ==",
+				"== Ana (Child, 7, Girl) ==",
 				"  - Art set",
 			} {
 				if !strings.Contains(email.body, want) {
 					t.Errorf("email body is missing %q:\n%s", want, email.body)
-				}
-			}
-			for _, name := range []string{"Maria", "Ana"} {
-				if strings.Contains(email.body, name) {
-					t.Errorf("email body contains recipient name %q", name)
 				}
 			}
 		})

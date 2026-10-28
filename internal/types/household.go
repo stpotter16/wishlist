@@ -74,6 +74,14 @@ func (m HouseholdMember) Name() string {
 	return m.FirstName + " " + m.LastInitial + "."
 }
 
+// HeadName is the head of the household's name, such as "Maria G.".
+func (h Household) HeadName() string {
+	if len(h.Members) == 0 {
+		return ""
+	}
+	return h.Members[0].Name()
+}
+
 type WishlistItem struct {
 	ID    int
 	Name  string
