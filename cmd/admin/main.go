@@ -11,16 +11,22 @@ import (
 	"strings"
 
 	"github.com/stpotter16/wishlist/internal/auth"
+	"github.com/stpotter16/wishlist/internal/demo"
 	"github.com/stpotter16/wishlist/internal/store"
 	"github.com/stpotter16/wishlist/internal/store/db"
 	"github.com/stpotter16/wishlist/internal/store/sqlite"
 	"golang.org/x/term"
 )
 
-const usage = `usage: admin create <username>
+const usage = `usage:
+  admin create <username>
+  admin seed-demo
 
-Prompts for the new admin's password without echoing it. When stdin is not a
-terminal, reads the password from the first line of stdin instead.`
+create prompts for the new admin's password without echoing it. When stdin is
+not a terminal, it reads the password from the first line of stdin instead.
+
+seed-demo fills an empty database with made-up households for stakeholders to
+explore. It refuses to run if the database already has households.`
 
 func run(
 	ctx context.Context,
@@ -29,6 +35,9 @@ func run(
 	stdin io.Reader,
 	stdout, stderr io.Writer,
 ) error {
+	if len(args) == 2 && args[1] == "seed-demo" {
+		return seedDemo(ctx, getenv, stdout)
+	}
 	if len(args) != 3 || args[1] != "create" {
 		return errors.New(usage)
 	}
@@ -73,6 +82,34 @@ func run(
 	}
 
 	fmt.Fprintf(stdout, "Created admin %q\n", username)
+	return nil
+}
+
+func seedDemo(ctx context.Context, getenv func(string) string, stdout io.Writer) error {
+	dbPath := getenv("WISHLIST_DB_PATH")
+	if dbPath == "" {
+		return errors.New("WISHLIST_DB_PATH environment variable not set")
+	}
+
+	database, err := db.New(dbPath)
+	if err != nil {
+		return err
+	}
+
+	s, err := sqlite.New(database)
+	if err != nil {
+		return err
+	}
+
+	result, err := demo.Seed(ctx, s)
+	if errors.Is(err, demo.ErrNotEmpty) {
+		return errors.New("the database already has households, so demo data would mix with them; seed-demo only runs on an empty database")
+	}
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintf(stdout, "Seeded %d demo households, %d of them claimed\n", result.Households, result.Claims)
 	return nil
 }
 

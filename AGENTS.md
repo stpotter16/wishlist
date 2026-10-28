@@ -138,6 +138,7 @@ Stakeholders decided on 2026-10-25 to keep claiming open, because codes, approva
 - `internal/store/`: the `Store` interface and its SQLite implementation.
   - Migrations live in `internal/store/sqlite/migrations/` as numbered `.sql` files.
 - `internal/types/`: domain types shared across packages.
+- `internal/demo/`: demo households for stakeholder testing (see [Seeding demo data](#seeding-demo-data)).
 - `style/input.css`: Tailwind source and design tokens.
 - `dev-scripts/`: build, lint, run, and deploy scripts that the Makefile wraps.
 
@@ -174,6 +175,7 @@ Stakeholders decided on 2026-10-25 to keep claiming open, because codes, approva
 - `make secrets/hmac` / `make secrets/gcm`: generate random keys.
 - `make admin/build`: build the admin CLI to `./tmp/admin`.
 - `make server/deploy`: run `fly deploy --ha=false`. Do not deploy unless the user explicitly asks.
+  - `make server/deploy SEED=demo` also runs `seed-demo` on the deployed machine. Leave `SEED` unset for a blank slate.
   - `--ha=false` keeps the app on exactly one machine. Each Fly machine has its own SQLite file, so a second machine would split households, claims, and sessions between two databases. Never remove it, with or without Litestream.
 
 ## Seeding admins
@@ -182,6 +184,18 @@ Stakeholders decided on 2026-10-25 to keep claiming open, because codes, approva
   - When stdin is not a terminal, it reads the password from the first line of stdin instead, for scripted use.
   - Locally: `make admin/build`, then `./tmp/admin create <username>`.
   - In production, the Docker image ships the CLI as `/app/wishlist-admin`. Run `fly ssh console`, then `/app/wishlist-admin create <username>`.
+
+## Seeding demo data
+
+- `admin seed-demo` fills an empty database with 12 made-up households (8 families and 4 single women, 3 of them claimed), so stakeholders can see the app with a full drive's worth of data. It needs `WISHLIST_DB_PATH`.
+  - Locally: `make admin/build`, then `./tmp/admin seed-demo`.
+  - On Fly: `fly ssh console --command '/app/wishlist-admin seed-demo'`, or deploy with `make server/deploy SEED=demo`.
+- It refuses to run if the database has any households, so demo data never mixes with real data. Once Litestream is on, a deploy no longer wipes the database, so seeding works only on a fresh database.
+- It creates no admin accounts. Seed admins with `admin create`.
+- The households live in `internal/demo/households.json`, in the same JSON shape the admin form posts. `parse.ParseHouseholdForm` validates them and builds their labels, so they follow the same rules as admin-entered households.
+  - Every recipient name starts with "Demo", so no one mistakes a demo household for a real one.
+- Demo claims go straight to the store, so no giver is emailed and no private link is printed or kept. Demo givers use `example.com` addresses.
+  - To see the giver flow, claim an unclaimed demo household through the public pages. That claim does send an email to the address entered.
 
 # Frontend
 

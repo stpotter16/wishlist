@@ -15,37 +15,47 @@ const maxHouseholdPostBytes = 1 << 20
 
 const maxAge = 130
 
-// ParseHouseholdPost decodes a new household from a JSON request body. It trims
-// every text field and drops blank needs and wishes. The first member is the
-// head of the household. A family's head is labeled "Mom", and the rest of its
-// members are children labeled "Child, <age>", or "Infant" at age 0. A single
-// woman's household has only its head, labeled "Woman".
-func ParseHouseholdPost(w http.ResponseWriter, r *http.Request) (types.Household, error) {
-	body := struct {
-		Kind    string `json:"kind"`
-		Members []struct {
-			FirstName             string   `json:"firstName"`
-			LastInitial           string   `json:"lastInitial"`
-			Age                   *int     `json:"age"`
-			Gender                string   `json:"gender"`
-			ShirtSize             string   `json:"shirtSize"`
-			PantSize              string   `json:"pantSize"`
-			ShoeSize              string   `json:"shoeSize"`
-			PreferredBrandsColors string   `json:"preferredBrandsColors"`
-			PreferredScents       string   `json:"preferredScents"`
-			PrefersUnscented      bool     `json:"prefersUnscented"`
-			PreferredGiftCards    string   `json:"preferredGiftCards"`
-			AdditionalInfo        string   `json:"additionalInfo"`
-			Needs                 []string `json:"needs"`
-			Wishes                []string `json:"wishes"`
-		} `json:"members"`
-	}{}
+// HouseholdForm is a household as the admin form submits it, before
+// validation. It matches the JSON body of POST /admin/households.
+type HouseholdForm struct {
+	Kind    string                `json:"kind"`
+	Members []HouseholdMemberForm `json:"members"`
+}
 
+type HouseholdMemberForm struct {
+	FirstName             string   `json:"firstName"`
+	LastInitial           string   `json:"lastInitial"`
+	Age                   *int     `json:"age"`
+	Gender                string   `json:"gender"`
+	ShirtSize             string   `json:"shirtSize"`
+	PantSize              string   `json:"pantSize"`
+	ShoeSize              string   `json:"shoeSize"`
+	PreferredBrandsColors string   `json:"preferredBrandsColors"`
+	PreferredScents       string   `json:"preferredScents"`
+	PrefersUnscented      bool     `json:"prefersUnscented"`
+	PreferredGiftCards    string   `json:"preferredGiftCards"`
+	AdditionalInfo        string   `json:"additionalInfo"`
+	Needs                 []string `json:"needs"`
+	Wishes                []string `json:"wishes"`
+}
+
+// ParseHouseholdPost decodes a new household from a JSON request body and
+// validates it with ParseHouseholdForm.
+func ParseHouseholdPost(w http.ResponseWriter, r *http.Request) (types.Household, error) {
+	var body HouseholdForm
 	r.Body = http.MaxBytesReader(w, r.Body, maxHouseholdPostBytes)
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		return types.Household{}, errors.New("request body is not valid JSON")
 	}
+	return ParseHouseholdForm(body)
+}
 
+// ParseHouseholdForm validates a household and builds its member labels. It
+// trims every text field and drops blank needs and wishes. The first member is
+// the head of the household. A family's head is labeled "Mom", and the rest of
+// its members are children labeled "Child, <age>", or "Infant" at age 0. A
+// single woman's household has only its head, labeled "Woman".
+func ParseHouseholdForm(body HouseholdForm) (types.Household, error) {
 	kind := types.HouseholdKind(body.Kind)
 	headLabel := ""
 	switch kind {

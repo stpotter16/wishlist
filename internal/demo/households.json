@@ -1,0 +1,369 @@
+[
+  {
+    "kind": "family",
+    "members": [
+      {
+        "firstName": "Demo Rosa",
+        "lastInitial": "A",
+        "shirtSize": "L",
+        "pantSize": "12",
+        "shoeSize": "8",
+        "preferredBrandsColors": "Blues and greens",
+        "preferredScents": "Lavender",
+        "preferredGiftCards": "Target",
+        "needs": ["Winter coat", "Bath towels"],
+        "wishes": ["Cozy slippers"]
+      },
+      {
+        "firstName": "Demo Leo",
+        "age": 9,
+        "gender": "Boy",
+        "shirtSize": "Youth M",
+        "pantSize": "10",
+        "shoeSize": "3",
+        "preferredBrandsColors": "Red, anything with dinosaurs",
+        "additionalInfo": "Loves soccer and building sets.",
+        "needs": ["Sneakers", "Winter hat and gloves"],
+        "wishes": ["Soccer ball", "Dinosaur building set"]
+      },
+      {
+        "firstName": "Demo Mia",
+        "age": 5,
+        "gender": "Girl",
+        "shirtSize": "5T",
+        "pantSize": "5T",
+        "shoeSize": "11",
+        "preferredBrandsColors": "Purple",
+        "additionalInfo": "Into unicorns and drawing.",
+        "needs": ["Pajamas", "Rain boots"],
+        "wishes": ["Art kit", "Unicorn plush"]
+      }
+    ]
+  },
+  {
+    "kind": "single",
+    "members": [
+      {
+        "firstName": "Demo Grace",
+        "lastInitial": "B",
+        "shirtSize": "XL",
+        "pantSize": "16",
+        "shoeSize": "9",
+        "preferredBrandsColors": "Earth tones",
+        "prefersUnscented": true,
+        "preferredGiftCards": "Kroger, Walmart",
+        "additionalInfo": "Enjoys reading mysteries and gardening.\nRecently moved into her own apartment.",
+        "needs": ["Pots and pans", "Bedding for a full bed"],
+        "wishes": ["Mystery novels", "Houseplant"]
+      }
+    ]
+  },
+  {
+    "kind": "family",
+    "members": [
+      {
+        "firstName": "Demo Tasha",
+        "lastInitial": "C",
+        "shirtSize": "M",
+        "pantSize": "8",
+        "shoeSize": "7",
+        "preferredScents": "Vanilla",
+        "preferredGiftCards": "Amazon",
+        "needs": ["Warm boots"],
+        "wishes": ["Scarf", "Coffee mug set"]
+      },
+      {
+        "firstName": "Demo Noah",
+        "age": 0,
+        "gender": "Boy",
+        "shirtSize": "6-12 months",
+        "additionalInfo": "Born in September.",
+        "needs": ["Diapers (size 3)", "Baby wipes", "Winter onesies"],
+        "wishes": ["Soft stacking toys"]
+      }
+    ]
+  },
+  {
+    "kind": "family",
+    "members": [
+      {
+        "firstName": "Demo Elena",
+        "lastInitial": "D",
+        "shirtSize": "S",
+        "pantSize": "4",
+        "shoeSize": "6",
+        "preferredBrandsColors": "Black, gray",
+        "preferredScents": "Citrus",
+        "needs": ["Work shoes", "Lunch bag"],
+        "wishes": ["Bluetooth headphones"]
+      },
+      {
+        "firstName": "Demo Sofia",
+        "age": 14,
+        "gender": "Girl",
+        "shirtSize": "Adult S",
+        "pantSize": "Juniors 3",
+        "shoeSize": "7",
+        "preferredBrandsColors": "Pastels",
+        "preferredGiftCards": "Ulta",
+        "additionalInfo": "Plays volleyball. Big fan of K-pop.",
+        "needs": ["Winter jacket", "Backpack"],
+        "wishes": ["Volleyball knee pads", "Journal and gel pens"]
+      },
+      {
+        "firstName": "Demo Mateo",
+        "age": 11,
+        "gender": "Boy",
+        "shirtSize": "Youth L",
+        "pantSize": "14",
+        "shoeSize": "5",
+        "additionalInfo": "Likes video games and the Bengals.",
+        "needs": ["Jeans", "Socks and underwear"],
+        "wishes": ["Football", "Bengals hoodie"]
+      },
+      {
+        "firstName": "Demo Lucia",
+        "age": 3,
+        "gender": "Girl",
+        "shirtSize": "3T",
+        "pantSize": "3T",
+        "shoeSize": "8",
+        "needs": ["Toddler bed sheets"],
+        "wishes": ["Play kitchen", "Picture books"]
+      }
+    ]
+  },
+  {
+    "kind": "single",
+    "members": [
+      {
+        "firstName": "Demo Joyce",
+        "lastInitial": "E",
+        "shirtSize": "2X",
+        "pantSize": "20",
+        "shoeSize": "10 wide",
+        "preferredBrandsColors": "Bright colors",
+        "preferredScents": "Rose",
+        "preferredGiftCards": "Meijer",
+        "additionalInfo": "Loves crossword puzzles and gospel music.",
+        "needs": ["Warm robe", "Non-slip slippers"],
+        "wishes": ["Crossword books", "Bluetooth speaker"]
+      }
+    ]
+  },
+  {
+    "kind": "family",
+    "members": [
+      {
+        "firstName": "Demo Keisha",
+        "lastInitial": "F",
+        "shirtSize": "L",
+        "pantSize": "14",
+        "shoeSize": "8.5",
+        "prefersUnscented": true,
+        "needs": ["Winter coat"],
+        "wishes": ["Throw blanket"]
+      },
+      {
+        "firstName": "Demo Jayden",
+        "age": 16,
+        "gender": "Boy",
+        "shirtSize": "Adult L",
+        "pantSize": "32x32",
+        "shoeSize": "11",
+        "preferredBrandsColors": "Nike, black",
+        "preferredGiftCards": "GameStop",
+        "additionalInfo": "On the school basketball team. Wants to learn to cook.",
+        "needs": ["Basketball shoes", "Hoodie"],
+        "wishes": ["Beginner cookbook", "Wireless earbuds"]
+      },
+      {
+        "firstName": "Demo Amara",
+        "age": 7,
+        "gender": "Girl",
+        "shirtSize": "Youth S",
+        "pantSize": "7",
+        "shoeSize": "1",
+        "additionalInfo": "Loves science and anything about space.",
+        "needs": ["School shoes", "Leggings"],
+        "wishes": ["Telescope", "Glow-in-the-dark stars"]
+      }
+    ]
+  },
+  {
+    "kind": "family",
+    "members": [
+      {
+        "firstName": "Demo Ana",
+        "lastInitial": "G",
+        "shirtSize": "M",
+        "pantSize": "10",
+        "shoeSize": "7.5",
+        "preferredScents": "Coconut",
+        "preferredGiftCards": "Aldi",
+        "needs": ["Bath towels", "Sheets for a queen bed"],
+        "wishes": ["Candle"]
+      },
+      {
+        "firstName": "Demo Diego",
+        "age": 2,
+        "gender": "Boy",
+        "shirtSize": "2T",
+        "pantSize": "2T",
+        "shoeSize": "6",
+        "needs": ["Winter coat", "Diapers (size 5)"],
+        "wishes": ["Toy trucks", "Board books"]
+      }
+    ]
+  },
+  {
+    "kind": "single",
+    "members": [
+      {
+        "firstName": "Demo Linda",
+        "lastInitial": "H",
+        "shirtSize": "M",
+        "pantSize": "10",
+        "shoeSize": "8",
+        "preferredBrandsColors": "Navy, cream",
+        "preferredScents": "Eucalyptus",
+        "preferredGiftCards": "Kroger",
+        "additionalInfo": "Starting a new job in January.",
+        "needs": ["Work clothes", "Comfortable flats"],
+        "wishes": ["Tote bag", "Travel mug"]
+      }
+    ]
+  },
+  {
+    "kind": "family",
+    "members": [
+      {
+        "firstName": "Demo Priya",
+        "lastInitial": "J",
+        "shirtSize": "S",
+        "pantSize": "6",
+        "shoeSize": "6.5",
+        "needs": ["Winter gloves"],
+        "wishes": ["Tea sampler"]
+      },
+      {
+        "firstName": "Demo Ravi",
+        "age": 12,
+        "gender": "Boy",
+        "shirtSize": "Youth XL",
+        "pantSize": "16",
+        "shoeSize": "7",
+        "additionalInfo": "Into robotics and chess.",
+        "needs": ["Winter boots"],
+        "wishes": ["Chess set", "Robot kit"]
+      },
+      {
+        "firstName": "Demo Asha",
+        "age": 10,
+        "gender": "Girl",
+        "shirtSize": "Youth M",
+        "pantSize": "10",
+        "shoeSize": "4",
+        "needs": ["Jacket", "Pajamas"],
+        "wishes": ["Friendship bracelet kit", "Chapter books"]
+      },
+      {
+        "firstName": "Demo Kiran",
+        "age": 6,
+        "gender": "Boy",
+        "shirtSize": "Youth XS",
+        "pantSize": "6",
+        "shoeSize": "13",
+        "needs": ["Sneakers"],
+        "wishes": ["Remote control car"]
+      },
+      {
+        "firstName": "Demo Isha",
+        "age": 1,
+        "gender": "Girl",
+        "shirtSize": "18 months",
+        "needs": ["Sippy cups", "Diapers (size 4)"],
+        "wishes": ["Musical toy"]
+      }
+    ]
+  },
+  {
+    "kind": "family",
+    "members": [
+      {
+        "firstName": "Demo Carmen",
+        "lastInitial": "K",
+        "shirtSize": "L",
+        "pantSize": "12",
+        "shoeSize": "9",
+        "preferredGiftCards": "Target",
+        "needs": ["Vacuum"],
+        "wishes": ["Hand lotion set"]
+      },
+      {
+        "firstName": "Demo Gabriel",
+        "age": 8,
+        "gender": "Boy",
+        "shirtSize": "Youth S",
+        "pantSize": "8",
+        "shoeSize": "2",
+        "additionalInfo": "Loves Pokémon and drawing comics.",
+        "needs": ["Winter coat", "Snow pants"],
+        "wishes": ["Pokémon cards", "Sketchbook"]
+      }
+    ]
+  },
+  {
+    "kind": "single",
+    "members": [
+      {
+        "firstName": "Demo Beverly",
+        "lastInitial": "L",
+        "shirtSize": "XL",
+        "pantSize": "18",
+        "shoeSize": "9.5",
+        "prefersUnscented": true,
+        "preferredGiftCards": "Walgreens",
+        "additionalInfo": "Knits and crochets.",
+        "needs": ["Heated blanket"],
+        "wishes": ["Yarn", "Large-print word search"]
+      }
+    ]
+  },
+  {
+    "kind": "family",
+    "members": [
+      {
+        "firstName": "Demo Nicole",
+        "lastInitial": "M",
+        "shirtSize": "M",
+        "pantSize": "8",
+        "shoeSize": "7",
+        "preferredBrandsColors": "Maroon, gold",
+        "needs": ["Winter coat"],
+        "wishes": ["Fuzzy socks"]
+      },
+      {
+        "firstName": "Demo Ethan",
+        "age": 13,
+        "gender": "Boy",
+        "shirtSize": "Adult S",
+        "pantSize": "28x30",
+        "shoeSize": "8",
+        "additionalInfo": "Skateboards. Likes the Cincinnati Reds.",
+        "needs": ["Hoodie", "Jeans"],
+        "wishes": ["Skateboard helmet", "Reds cap"]
+      },
+      {
+        "firstName": "Demo Zoe",
+        "age": 4,
+        "gender": "Girl",
+        "shirtSize": "4T",
+        "pantSize": "4T",
+        "shoeSize": "10",
+        "needs": ["Mittens", "Pajamas"],
+        "wishes": ["Doll", "Bubble machine"]
+      }
+    ]
+  }
+]
