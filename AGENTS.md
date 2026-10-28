@@ -27,7 +27,7 @@ The current Fly deployment is a stakeholder test drive. It runs without Litestre
   - A family (`family`): a mom and her children.
   - A single woman (`single`): one woman living on her own.
   - Admins pick the kind on the household form. The server rejects a family without a child and a single woman's household with more than one member, so a forgotten child can't turn a family into a single woman.
-  - The app shows a household by a label such as "Blackbird Place Resident/Family 12", plus its kind ("Family" or "Single woman").
+  - The app shows a household by a label such as "Blackbird Place Resident/Family 12", plus its kind ("Family" or "Single woman"). The public listing is the exception: it titles each card by the head of the household's name and omits the kind. Stakeholders asked for this on 2026-10-27.
   - The UI never says "household". It says "Blackbird Place Resident/Family" (plural "Blackbird Place Residents/Families"). Code, routes, and the database keep "household".
 - Each household member has their own wishlist.
   - The first member is the head of the household: the mom or the single woman. Every other member is a child.
@@ -39,7 +39,7 @@ The current Fly deployment is a stakeholder test drive. It runs without Litestre
 - Keep recipient data minimal. Store only these names, and nothing else that identifies a recipient (no full last names, addresses, or phone numbers):
   - The head of the household's first name and last initial, shown as "Maria G.". The server accepts exactly one letter for the initial.
   - Each child's first name only.
-  - Names appear on the household's detail pages: the public household page, the giver's claim page, and the admin page. Listings show only member labels.
+  - Names appear on the household's detail pages: the public household page, the giver's claim page, and the admin page. The public listing also shows the head of the household's name as each card's title. Otherwise, listings show only member labels.
   - The public household page needs no login, so anyone with the URL can see these names before claiming. See [Claim gating](#claim-gating).
 
 ## Claims
@@ -111,7 +111,7 @@ Stakeholders decided on 2026-10-25 to keep claiming open, because codes, approva
 - `http.CrossOriginProtection` in `NewServer` guards against CSRF by rejecting cross-origin `POST`, `PUT`, and `DELETE` requests from browsers. There are no CSRF tokens. See [Browser support](#browser-support) for what this assumes.
   - Never change state in a `GET` handler, since the protection skips safe methods.
 - Public routes (givers, no login):
-  - `GET /`: unclaimed households, each shown as "Household N" with its kind and member labels.
+  - `GET /`: unclaimed households, each shown by the head of the household's name (such as "Maria G.") and member labels.
   - `GET /households/{id}`: a household's members, sizes, preferences, needs, and wishes. Returns 404 once the household is claimed.
   - `POST /households/{id}/claim`: takes the giver's name, email, phone, and Turnstile token; responds with the giver's private link and [emails it](#emailing-giver-links) to the giver. Returns 403 if the [Turnstile check](#claim-gating) fails, 503 if Cloudflare can't be reached, 409 if the household is already claimed or the email has already claimed a household, and 429 past the [rate limit](#claim-gating).
   - `GET /claims/{token}`: the giver's private view of their household.

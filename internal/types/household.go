@@ -21,8 +21,11 @@ func (k HouseholdKind) Label() string {
 // HouseholdSummary is the view of a household in a listing. It shows members
 // only by their anonymous labels.
 type HouseholdSummary struct {
-	ID           int
-	Kind         HouseholdKind
+	ID   int
+	Kind HouseholdKind
+	// HeadName is set only in the public listing, which titles each household
+	// by the head of the household's name, such as "Maria G.".
+	HeadName     string
 	MemberLabels []string
 	IsClaimed    bool
 	// GiverName and GiverEmail are set only in the admin listing, so admins

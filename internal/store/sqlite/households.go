@@ -18,6 +18,8 @@ func (s Store) ListUnclaimedHouseholds(ctx context.Context) ([]types.HouseholdSu
 	SELECT
 		household.id,
 		household.kind,
+		household_member.first_name,
+		household_member.last_initial,
 		household_member.label
 	FROM
 		household
@@ -37,14 +39,17 @@ func (s Store) ListUnclaimedHouseholds(ctx context.Context) ([]types.HouseholdSu
 	for rows.Next() {
 		var householdID int
 		var kind string
+		var member types.HouseholdMember
 		var memberLabel string
-		if err := rows.Scan(&householdID, &kind, &memberLabel); err != nil {
+		if err := rows.Scan(&householdID, &kind, &member.FirstName, &member.LastInitial, &memberLabel); err != nil {
 			return nil, err
 		}
+		// Members come in ID order, so a household's first row is its head.
 		if len(households) == 0 || households[len(households)-1].ID != householdID {
 			households = append(households, types.HouseholdSummary{
-				ID:   householdID,
-				Kind: types.HouseholdKind(kind),
+				ID:       householdID,
+				Kind:     types.HouseholdKind(kind),
+				HeadName: member.Name(),
 			})
 		}
 		last := &households[len(households)-1]

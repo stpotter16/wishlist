@@ -233,20 +233,19 @@ func TestAdminCreateSingleWomanHousehold(t *testing.T) {
 		t.Fatalf("status=%d, want=%d, body=%q", got, want, rec.Body.String())
 	}
 
-	// The listing shows only her anonymous label. Her name appears on the
-	// household's own page.
+	// The listing titles the household by her name and omits its kind.
 	req = httptest.NewRequest(http.MethodGet, "/", nil)
 	rec = httptest.NewRecorder()
 	server.ServeHTTP(rec, req)
 
 	body := strings.Join(strings.Fields(rec.Body.String()), " ")
-	for _, want := range []string{"Blackbird Place Resident/Family 1", "Single woman", "Woman"} {
+	for _, want := range []string{"Rosa M.", "Woman"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("listing is missing %q", want)
 		}
 	}
-	if strings.Contains(body, "Rosa") {
-		t.Errorf("listing shows her name")
+	if strings.Contains(body, "Single woman") {
+		t.Errorf("listing shows the household's kind")
 	}
 
 	req = httptest.NewRequest(http.MethodGet, "/households/1", nil)

@@ -18,10 +18,10 @@ func TestHouseholdsListsOnlyUnclaimedHouseholds(t *testing.T) {
 		(1, 'family', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
 		(2, 'family', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
 	INSERT INTO household_member
-		(household_id, first_name, label, created_time, last_modified_time)
+		(household_id, first_name, last_initial, label, created_time, last_modified_time)
 	VALUES
-		(1, 'Maria', 'Mom', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-		(2, 'Dan', 'Dad', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+		(1, 'Maria', 'G', 'Mom', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+		(2, 'Dan', 'R', 'Dad', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
 	INSERT INTO claim (
 		household_id, giver_name, giver_email, giver_phone, access_token_hash,
 		created_time
@@ -41,8 +41,8 @@ func TestHouseholdsListsOnlyUnclaimedHouseholds(t *testing.T) {
 		t.Fatalf("status=%d, want=%d", got, want)
 	}
 	body := strings.Join(strings.Fields(rec.Body.String()), " ")
-	if !strings.Contains(body, "Blackbird Place Resident/Family 1") {
-		t.Errorf("body is missing unclaimed household's label")
+	if !strings.Contains(body, "Maria G.") {
+		t.Errorf("body is missing unclaimed household's head name")
 	}
 	if !strings.Contains(body, "Mom") {
 		t.Errorf("body is missing unclaimed household's member label")
@@ -50,8 +50,8 @@ func TestHouseholdsListsOnlyUnclaimedHouseholds(t *testing.T) {
 	if !strings.Contains(body, `href="/households/1"`) {
 		t.Errorf("body is missing link to unclaimed household")
 	}
-	if strings.Contains(body, "Blackbird Place Resident/Family 2") {
-		t.Errorf("body contains claimed household's label")
+	if strings.Contains(body, "Dan R.") {
+		t.Errorf("body contains claimed household's head name")
 	}
 	if strings.Contains(body, "Dad") {
 		t.Errorf("body contains claimed household's member label")
