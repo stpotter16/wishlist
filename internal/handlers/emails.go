@@ -63,7 +63,7 @@ func claimEmailBody(link string, household types.Household, isNewLink bool) stri
 		writeItems(&b, "Wishes", m.Wishes)
 
 		writeField(&b, "Shirt size", m.ShirtSize)
-		writeField(&b, "Pant size", m.PantSize)
+		writeField(&b, "Pants size", m.PantSize)
 		writeField(&b, "Shoe size", m.ShoeSize)
 		writeField(&b, "Brands or colors", m.PreferredBrandsColors)
 		writeField(&b, "Toiletry scents", m.PreferredScents)
