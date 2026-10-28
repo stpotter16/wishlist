@@ -8,7 +8,7 @@ Wishlist is a web app for an annual adopt-a-family gift drive.
 
 The current Fly deployment is a stakeholder test drive. It runs without Litestream, so the database resets on every deploy. These items must ship before the app goes to production:
 
-1. **Set up the custom domain and Resend.** Point a subdomain at the app (`fly certs add <hostname>`, plus the DNS record Fly gives), and add the hostname to the Turnstile widget. Verify the sending domain in Resend with its SPF and DKIM records. Then set the `WISHLIST_RESEND_API_KEY`, `WISHLIST_EMAIL_FROM`, `WISHLIST_EMAIL_REPLY_TO`, and `WISHLIST_BASE_URL` secrets. The server refuses to start without them, so this has to happen before the next deploy.
+1. **Set up the custom domain and Resend.** Point a subdomain at the app (`fly certs add <hostname>`, plus the DNS record Fly gives), and add the hostname to the Turnstile widget. Verify the sending domain in Resend with its SPF and DKIM records, and create an API key with "Sending access" restricted to that domain. Then set the `WISHLIST_RESEND_API_KEY`, `WISHLIST_EMAIL_FROM`, `WISHLIST_EMAIL_REPLY_TO`, and `WISHLIST_BASE_URL` secrets. The server refuses to start without them, so this has to happen before the next deploy.
 2. **Turn Litestream back on.** Create a bucket and set the `LITESTREAM_BUCKET`, `LITESTREAM_ENDPOINT`, `LITESTREAM_ACCESS_KEY_ID`, and `LITESTREAM_SECRET_ACCESS_KEY` secrets, so production data survives deploys and machine restarts. Without them, `docker-entrypoint` starts the app without replication.
 
 ## Roles
@@ -152,7 +152,7 @@ Stakeholders decided on 2026-10-25 to keep claiming open, because codes, approva
   - `WISHLIST_DB_PATH`: directory that holds `wishlist.sqlite`.
   - `WISHLIST_SESSION_ENV_KEY`: session signing key. Generate one with `make secrets/hmac`.
   - `WISHLIST_BASE_URL`: the absolute URL the app is served from, such as `https://wishlist.example.org`, used for links in emails. Use the custom domain, not `fly.dev`. See [Emailing giver links](#emailing-giver-links).
-  - `WISHLIST_RESEND_API_KEY`: Resend's API key. Locally, a dummy key works: sends fail and get logged, and claims still go through.
+  - `WISHLIST_RESEND_API_KEY`: Resend's API key. Give it "Sending access" restricted to the verified domain, not "Full access", since the app only calls the send-email endpoint. A leaked sending key can't change domains, keys, or other account settings. Locally, a dummy key works: sends fail and get logged, and claims still go through.
   - `WISHLIST_EMAIL_FROM`: the sender on giver emails, such as `Wishlist <noreply@example.org>`. It must be on a domain verified in Resend, or Resend rejects the send. The mailbox doesn't need to exist.
   - `WISHLIST_EMAIL_REPLY_TO`: where givers' replies go. It can be any address the organizers read, on any domain, since Resend doesn't verify it.
   - `WISHLIST_TURNSTILE_SITE_KEY` and `WISHLIST_TURNSTILE_SECRET_KEY`: the Cloudflare Turnstile widget's keys. `.env.example` uses Cloudflare's test keys, which always pass, so local development needs no Cloudflare account.
