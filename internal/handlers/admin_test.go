@@ -253,10 +253,13 @@ func TestAdminCreateSingleWomanHousehold(t *testing.T) {
 	server.ServeHTTP(rec, req)
 
 	body = rec.Body.String()
-	for _, want := range []string{"Single woman", "Rosa M.", "Woman", "Slippers"} {
+	for _, want := range []string{"Rosa M.", "Woman", "Slippers"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("household page is missing %q", want)
 		}
+	}
+	if strings.Contains(body, "Single woman") {
+		t.Errorf("household page shows the household's kind")
 	}
 }
 
