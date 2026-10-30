@@ -403,6 +403,9 @@ func TestClaimHouseholdEmailsGiverTheirLinkAndWishlist(t *testing.T) {
 			for _, want := range []string{
 				testBaseURL + claim.URL,
 				"Thank you for adopting Maria G.!",
+				"== Blackbird Place Christmas Gift Drive Helpful Tips ==",
+				"- Plan to spend at least $50/family member on your list\n",
+				"- Please reach out to us at outreach@goodshepherdathens.com if you have any questions.",
 				"== Maria G. (Mom) ==",
 				"  - Winter coat (size M)",
 				"Shirt size: M",
@@ -419,6 +422,10 @@ func TestClaimHouseholdEmailsGiverTheirLinkAndWishlist(t *testing.T) {
 			for _, want := range []string{
 				`href="` + testBaseURL + claim.URL + `"`,
 				"Thank you for adopting Maria G.!",
+				"Blackbird Place Christmas Gift Drive Helpful Tips",
+				"Plan to spend <strong>at least $50/family member on your list</strong>",
+				"<strong>Please WRAP gifts intended for the Blackbird Place resident</strong>/mother of the family",
+				`href="mailto:outreach@goodshepherdathens.com"`,
 				"Maria G.",
 				"Winter coat",
 				"(size M)",

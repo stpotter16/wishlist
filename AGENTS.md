@@ -74,7 +74,8 @@ Decided with the user from 2026-10-22 to 2026-10-27.
 - The email has an HTML body and a plain-text body, and Resend sends both. Both render from one `claimEmail` struct (`newClaimEmail` in `internal/handlers/emails.go`), so they show the same content.
   - The HTML is a Go `html/template` in `templates/emails/claim.html`, kept in the repo rather than in Resend's template feature. Resend templates only substitute strings and numbers, with no loops, so the wishlist would still have to be built in Go. They would also need a Full access API key to sync.
   - Many email clients strip `<style>` tags or don't support `oklch()`. Style the email inline, with the hex versions of `input.css`'s light-theme tokens, and use tables for layout. The email has no dark variant.
-  - The email names the household by the head of the household's name (in the subject too), and has the private link, a note that replies reach the organizers, and the household's wishlist: each member's needs, wishes, sizes, and preferences.
+  - The email names the household by the head of the household's name (in the subject too), and has the private link, a note that replies reach the organizers, the organizers' tips for givers (`giverTips`), and the household's wishlist: each member's needs, wishes, sizes, and preferences.
+  - The tips include the drop-off deadline, which is hardcoded. Update it each season.
   - Members appear by name and label, such as "Ana (Child, 7, Girl)". An email can be forwarded or kept for years, so this spreads recipient names further than the pages do. Stakeholders accepted that risk on 2026-10-27.
   - The wishlist in the email is a snapshot. Admin edits don't reach it, so the email points givers to the private link for the current list.
 - The from and reply-to addresses are config, not code, since Resend takes both on each send.

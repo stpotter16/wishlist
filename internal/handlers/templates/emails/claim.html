@@ -85,6 +85,56 @@
                   Questions? Reply to this email to reach the organizers.
                 </p>
 
+                <table
+                  role="presentation"
+                  width="100%"
+                  cellpadding="0"
+                  cellspacing="0"
+                  style="margin-top: 24px; background-color: #fcfaf1; border: 1px solid #d8ddcb; border-radius: 6px"
+                >
+                  <tr>
+                    <td style="padding: 16px 20px">
+                      <h2
+                        style="margin: 0 0 8px; color: #b32130; font-size: 18px; text-align: center"
+                      >
+                        Blackbird Place Christmas Gift Drive Helpful Tips
+                      </h2>
+                      <ul style="margin: 0; padding-left: 20px">
+                        {{ range .Tips }}
+                          <li style="margin-top: 8px">
+                            {{- range .Parts -}}
+                              {{- if .Bold -}}
+                                <strong>{{ .Text }}</strong>
+                              {{- else -}}
+                                {{ .Text }}
+                              {{- end -}}
+                            {{- end -}}
+                            {{ if .Note }}
+                              <br /><span
+                                style="display: inline-block; padding-left: 24px"
+                                >{{ .Note }}</span
+                              >
+                            {{ end }}
+                          </li>
+                        {{ end }}
+                        <li style="margin-top: 8px">
+                          Please reach out to us at
+                          <a
+                            href="mailto:{{ .OrganizerEmail }}"
+                            style="color: #036639"
+                            >{{ .OrganizerEmail }}</a
+                          >
+                          if you have any questions.
+                        </li>
+                      </ul>
+                      <p style="margin: 16px 0 0; text-align: center">
+                        Thank you for adopting a Blackbird Place resident and
+                        her family for Christmas!
+                      </p>
+                    </td>
+                  </tr>
+                </table>
+
                 {{ range .Members }}
                   <table
                     role="presentation"

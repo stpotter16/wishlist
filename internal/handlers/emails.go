@@ -20,14 +20,48 @@ type Mailer interface {
 
 var claimEmailTmpl = template.Must(template.ParseFS(templateFS, "templates/emails/claim.html"))
 
+// giverTips are the drive organizers' instructions for givers, which both
+// bodies of the claim email show above the wishlists. The wording and bold
+// phrases follow the organizers' tip sheet. Update the drop-off date each
+// season.
+var giverTips = []giverTip{
+	{
+		Parts: []tipPart{{Text: "Plan to spend "}, {Text: "at least $50/family member on your list", Bold: true}},
+		Note:  "*Feel free to team up with others at Good Shepherd to fulfill a wishlist and share the financial commitment",
+	},
+	{Parts: []tipPart{{Text: "Please WRAP gifts intended for the Blackbird Place resident", Bold: true}, {Text: "/mother of the family"}}},
+	{Parts: []tipPart{{Text: "Please DO NOT WRAP gifts intended for children", Bold: true}, {Text: " (to provide mothers the opportunity to wrap their children's gifts)"}}},
+	{Parts: []tipPart{{Text: "Please clearly label each gift with the name of its recipient", Bold: true}, {Text: " using the provided gift tag stickers in your kit."}}},
+	{Parts: []tipPart{{Text: "Please sign the Christmas card", Bold: true}, {Text: " provided in your kit and drop it off along with your gifts."}}},
+	{Parts: []tipPart{{Text: "If you are providing a gift card in addition to wishlist requests or in response to specific gift card requests, "}, {Text: "place gift cards in envelopes labeled with the amount", Bold: true}}},
+	{Parts: []tipPart{{Text: "All gifts must be dropped off at Good Shepherd (890 Boulevard) by "}, {Text: "Sunday, 12/13", Bold: true}, {Text: " so we can ensure every family receives their gifts on time"}}},
+}
+
+// organizerEmail is where the tips send givers' questions.
+const organizerEmail = "outreach@goodshepherdathens.com"
+
+type giverTip struct {
+	// Parts make up the tip's sentence, so the HTML can bold some phrases.
+	Parts []tipPart
+	// Note is an optional aside, shown under the tip.
+	Note string
+}
+
+type tipPart struct {
+	Text string
+	Bold bool
+}
+
 // claimEmail is what both bodies of the claim email show, so the plain-text
 // and HTML versions can't drift apart.
 type claimEmail struct {
-	Subject   string
-	Link      string
-	HeadName  string
-	IsNewLink bool
-	Members   []claimEmailMember
+	Subject        string
+	Link           string
+	HeadName       string
+	IsNewLink      bool
+	Tips           []giverTip
+	OrganizerEmail string
+	Members        []claimEmailMember
 }
 
 type claimEmailMember struct {
@@ -73,10 +107,12 @@ func newClaimEmail(link string, household types.Household, isNewLink bool) claim
 	}
 
 	email := claimEmail{
-		Subject:   subject,
-		Link:      link,
-		HeadName:  household.HeadName(),
-		IsNewLink: isNewLink,
+		Subject:        subject,
+		Link:           link,
+		HeadName:       household.HeadName(),
+		IsNewLink:      isNewLink,
+		Tips:           giverTips,
+		OrganizerEmail: organizerEmail,
 	}
 	for _, m := range household.Members {
 		label := m.Label
@@ -132,6 +168,20 @@ func claimEmailText(email claimEmail) string {
 	b.WriteString("Keep this link to yourself. Anyone who has it can see the Blackbird Place Resident/Family.\n\n")
 	b.WriteString("Below is a copy of the wishlists as of this email. The drive's organizers may update them, so check your link for the latest version.\n\n")
 	b.WriteString("Questions? Reply to this email to reach the organizers.\n")
+
+	b.WriteString("\n== Blackbird Place Christmas Gift Drive Helpful Tips ==\n")
+	for _, tip := range email.Tips {
+		b.WriteString("- ")
+		for _, part := range tip.Parts {
+			b.WriteString(part.Text)
+		}
+		b.WriteString("\n")
+		if tip.Note != "" {
+			fmt.Fprintf(&b, "  %s\n", tip.Note)
+		}
+	}
+	fmt.Fprintf(&b, "- Please reach out to us at %s if you have any questions.\n\n", email.OrganizerEmail)
+	b.WriteString("Thank you for adopting a Blackbird Place resident and her family for Christmas!\n")
 
 	for _, m := range email.Members {
 		b.WriteString("\n")
