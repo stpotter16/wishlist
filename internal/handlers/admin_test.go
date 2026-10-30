@@ -1091,8 +1091,14 @@ func TestAdminIssueNewLinkEmailsGiver(t *testing.T) {
 			if got, want := email.subject, "Your new link for Maria"; got != want {
 				t.Errorf("subject=%q, want=%q", got, want)
 			}
-			if !strings.Contains(email.body, testBaseURL+claim.URL) {
-				t.Errorf("email body is missing the new link %q", testBaseURL+claim.URL)
+			if !strings.Contains(email.text, testBaseURL+claim.URL) {
+				t.Errorf("email text is missing the new link %q", testBaseURL+claim.URL)
+			}
+			if !strings.Contains(email.html, `href="`+testBaseURL+claim.URL+`"`) {
+				t.Errorf("email html is missing the new link %q", testBaseURL+claim.URL)
+			}
+			if !strings.Contains(email.html, "Your old link no longer works.") {
+				t.Errorf("email html is missing the new-link wording:\n%s", email.html)
 			}
 		})
 	}

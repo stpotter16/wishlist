@@ -58,7 +58,8 @@ func (f *fakeHumanVerifier) Verify(ctx context.Context, token string) (bool, err
 type sentEmail struct {
 	to      string
 	subject string
-	body    string
+	text    string
+	html    string
 }
 
 // fakeMailer stands in for Resend, so tests never send email. It records
@@ -68,8 +69,8 @@ type fakeMailer struct {
 	sent []sentEmail
 }
 
-func (f *fakeMailer) Send(ctx context.Context, to, subject, body string) error {
-	f.sent = append(f.sent, sentEmail{to: to, subject: subject, body: body})
+func (f *fakeMailer) Send(ctx context.Context, to, subject, text, html string) error {
+	f.sent = append(f.sent, sentEmail{to: to, subject: subject, text: text, html: html})
 	return f.err
 }
 

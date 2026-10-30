@@ -369,7 +369,7 @@ func TestClaimHouseholdEmailsGiverTheirLinkAndWishlist(t *testing.T) {
 			) VALUES
 				(10, 'need', 'Winter coat', 'size M', '2026-01-01T00:00:00Z',
 					'2026-01-01T00:00:00Z'),
-				(11, 'wish', 'Art set', '', '2026-01-01T00:00:00Z',
+				(11, 'wish', 'Art set', '<i>any color</i>', '2026-01-01T00:00:00Z',
 					'2026-01-01T00:00:00Z');
 			`); err != nil {
 				t.Fatalf("seed: %v", err)
@@ -408,10 +408,29 @@ func TestClaimHouseholdEmailsGiverTheirLinkAndWishlist(t *testing.T) {
 				"Shirt size: M",
 				"Sensitive skin: Prefers unscented products",
 				"== Ana (Child, 7, Girl) ==",
-				"  - Art set",
+				"  - Art set (<i>any color</i>)",
 			} {
-				if !strings.Contains(email.body, want) {
-					t.Errorf("email body is missing %q:\n%s", want, email.body)
+				if !strings.Contains(email.text, want) {
+					t.Errorf("email text is missing %q:\n%s", want, email.text)
+				}
+			}
+
+			html := strings.Join(strings.Fields(email.html), " ")
+			for _, want := range []string{
+				`href="` + testBaseURL + claim.URL + `"`,
+				"Thank you for adopting Maria G.!",
+				"Maria G.",
+				"Winter coat",
+				"(size M)",
+				"Shirt size </td> <td style=\"padding: 2px 0\">M</td>",
+				"Prefers unscented products",
+				"Child, 7, Girl",
+				"Art set",
+				// Admins type item names and notes, so the HTML escapes them.
+				"(&lt;i&gt;any color&lt;/i&gt;)",
+			} {
+				if !strings.Contains(html, want) {
+					t.Errorf("email html is missing %q:\n%s", want, html)
 				}
 			}
 		})

@@ -1,4 +1,4 @@
-// Package resend sends plain-text email through Resend's HTTP API.
+// Package resend sends email through Resend's HTTP API.
 package resend
 
 import (
@@ -36,21 +36,24 @@ func New(params Params) Client {
 	}
 }
 
-// Send emails a plain-text message. Its errors never include the message, so
-// callers can log them even when the body carries a secret link.
-func (c Client) Send(ctx context.Context, to, subject, body string) error {
+// Send emails a message with plain-text and HTML bodies. Its errors never
+// include either body, so callers can log them even when the bodies carry a
+// secret link.
+func (c Client) Send(ctx context.Context, to, subject, text, html string) error {
 	payload, err := json.Marshal(struct {
 		From    string   `json:"from"`
 		To      []string `json:"to"`
 		ReplyTo string   `json:"reply_to"`
 		Subject string   `json:"subject"`
 		Text    string   `json:"text"`
+		HTML    string   `json:"html"`
 	}{
 		From:    c.params.From,
 		To:      []string{to},
 		ReplyTo: c.params.ReplyTo,
 		Subject: subject,
-		Text:    body,
+		Text:    text,
+		HTML:    html,
 	})
 	if err != nil {
 		return err

@@ -45,6 +45,7 @@ func TestSend(t *testing.T) {
 				ReplyTo string   `json:"reply_to"`
 				Subject string   `json:"subject"`
 				Text    string   `json:"text"`
+				HTML    string   `json:"html"`
 			}
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				gotAuth = r.Header.Get("Authorization")
@@ -62,7 +63,9 @@ func TestSend(t *testing.T) {
 				ReplyTo: "organizers@example.org",
 				URL:     server.URL,
 			})
-			err := client.Send(context.Background(), "giver@example.com", "Dummy subject", "dummy body with https://example.org/claims/secret-token")
+			err := client.Send(context.Background(), "giver@example.com", "Dummy subject",
+				"dummy text with https://example.org/claims/secret-token",
+				`<a href="https://example.org/claims/secret-token">dummy html</a>`)
 			if got, want := err != nil, tt.errWanted; got != want {
 				t.Fatalf("err=%v, want error=%v", err, want)
 			}
@@ -85,8 +88,11 @@ func TestSend(t *testing.T) {
 			if got, want := got.Subject, "Dummy subject"; got != want {
 				t.Errorf("subject=%q, want=%q", got, want)
 			}
-			if got, want := got.Text, "dummy body with https://example.org/claims/secret-token"; got != want {
+			if got, want := got.Text, "dummy text with https://example.org/claims/secret-token"; got != want {
 				t.Errorf("text=%q, want=%q", got, want)
+			}
+			if got, want := got.HTML, `<a href="https://example.org/claims/secret-token">dummy html</a>`; got != want {
+				t.Errorf("html=%q, want=%q", got, want)
 			}
 		})
 	}

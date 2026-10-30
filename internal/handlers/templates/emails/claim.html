@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <meta name="supported-color-schemes" content="light" />
+    <title>{{ .Subject }}</title>
+  </head>
+  <!--
+    Many email clients strip <style> tags or don't support oklch(), so styles
+    are inline, and the hex colors are style/input.css's light-theme tokens
+    converted by hand.
+  -->
+  <body
+    style="margin: 0; padding: 0; background-color: #fcfaf1; color: #132c20; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.5"
+  >
+    <table
+      role="presentation"
+      width="100%"
+      cellpadding="0"
+      cellspacing="0"
+      style="background-color: #fcfaf1"
+    >
+      <tr>
+        <td align="center" style="padding: 24px 12px">
+          <table
+            role="presentation"
+            width="100%"
+            cellpadding="0"
+            cellspacing="0"
+            style="max-width: 560px; background-color: #fffefb; border: 1px solid #d8ddcb; border-top: 6px solid #b32130; border-radius: 8px"
+          >
+            <tr>
+              <td style="padding: 32px 28px">
+                {{ if .IsNewLink }}
+                  <h1
+                    style="margin: 0 0 16px; color: #b32130; font-size: 24px; line-height: 1.25"
+                  >
+                    Your new link for
+                    {{ .HeadName }}
+                  </h1>
+                  <p style="margin: 0 0 24px">
+                    Here is your new private link to {{ .HeadName }}'s
+                    wishlists. Your old link no longer works.
+                  </p>
+                {{ else }}
+                  <h1
+                    style="margin: 0 0 16px; color: #b32130; font-size: 24px; line-height: 1.25"
+                  >
+                    Thank you for adopting {{ .HeadName }}!
+                  </h1>
+                  <p style="margin: 0 0 24px">
+                    Here is your private link to the Blackbird Place
+                    Resident/Family's wishlists.
+                  </p>
+                {{ end }}
+                <table role="presentation" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td style="border-radius: 6px; background-color: #036639">
+                      <a
+                        href="{{ .Link }}"
+                        style="display: inline-block; padding: 12px 24px; color: #fefcf4; font-weight: bold; text-decoration: none"
+                        >Open your wishlists</a
+                      >
+                    </td>
+                  </tr>
+                </table>
+                <p
+                  style="margin: 16px 0 0; color: #4d6457; font-size: 14px; word-break: break-all"
+                >
+                  Or paste this link into your browser:<br />
+                  <a href="{{ .Link }}" style="color: #036639">{{ .Link }}</a>
+                </p>
+                <p style="margin: 24px 0 0">
+                  Keep this link to yourself. Anyone who has it can see the
+                  Blackbird Place Resident/Family.
+                </p>
+                <p style="margin: 16px 0 0">
+                  Below is a copy of the wishlists as of this email. The drive's
+                  organizers may update them, so check your link for the latest
+                  version.
+                </p>
+                <p style="margin: 16px 0 0">
+                  Questions? Reply to this email to reach the organizers.
+                </p>
+
+                {{ range .Members }}
+                  <table
+                    role="presentation"
+                    width="100%"
+                    cellpadding="0"
+                    cellspacing="0"
+                    style="margin-top: 24px; border: 1px solid #d8ddcb; border-radius: 6px"
+                  >
+                    <tr>
+                      <td style="padding: 16px 20px">
+                        <h2 style="margin: 0; font-size: 18px">
+                          {{ .Name }}
+                        </h2>
+                        <p style="margin: 0; color: #4d6457; font-size: 14px">
+                          {{ .Label }}
+                        </p>
+                        {{ if .Needs }}
+                          <h3
+                            style="margin: 16px 0 4px; color: #4d6457; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em"
+                          >
+                            Needs
+                          </h3>
+                          <ul style="margin: 0; padding-left: 20px">
+                            {{ range .Needs }}
+                              <li>
+                                {{ .Name }}{{ if .Notes }}
+                                  <span style="color: #4d6457"
+                                    >({{ .Notes }})</span
+                                  >
+                                {{ end }}
+                              </li>
+                            {{ end }}
+                          </ul>
+                        {{ end }}
+                        {{ if .Wishes }}
+                          <h3
+                            style="margin: 16px 0 4px; color: #4d6457; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em"
+                          >
+                            Wishes
+                          </h3>
+                          <ul style="margin: 0; padding-left: 20px">
+                            {{ range .Wishes }}
+                              <li>
+                                {{ .Name }}{{ if .Notes }}
+                                  <span style="color: #4d6457"
+                                    >({{ .Notes }})</span
+                                  >
+                                {{ end }}
+                              </li>
+                            {{ end }}
+                          </ul>
+                        {{ end }}
+                        {{ if .Details }}
+                          <table
+                            role="presentation"
+                            cellpadding="0"
+                            cellspacing="0"
+                            style="margin-top: 16px; font-size: 14px"
+                          >
+                            {{ range .Details }}
+                              <tr>
+                                <td
+                                  style="padding: 2px 16px 2px 0; color: #4d6457; vertical-align: top; white-space: nowrap"
+                                >
+                                  {{ .Label }}
+                                </td>
+                                <td style="padding: 2px 0">{{ .Value }}</td>
+                              </tr>
+                            {{ end }}
+                          </table>
+                        {{ end }}
+                      </td>
+                    </tr>
+                  </table>
+                {{ end }}
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
