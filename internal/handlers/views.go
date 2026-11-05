@@ -68,3 +68,31 @@ func extractCspNonceOnly(r *http.Request) (string, error) {
 	}
 	return cspNonce, nil
 }
+
+func driveClosedGet() http.HandlerFunc {
+	t := template.Must(
+		template.New("base.html").
+			ParseFS(
+				templateFS,
+				"templates/layouts/base.html",
+				"templates/pages/drive-closed.html",
+			))
+	return func(w http.ResponseWriter, r *http.Request) {
+		nonce, err := extractCspNonceOnly(r)
+		if err != nil {
+			log.Printf("Could not extract csp nonce from ctx: %v", err)
+			renderAppError(w, r, http.StatusInternalServerError)
+			return
+		}
+		if err := t.Execute(w, viewProps{CspNonce: nonce}); err != nil {
+			log.Printf("Could not create drive closed page: %v", err)
+			renderAppError(w, r, http.StatusInternalServerError)
+		}
+	}
+}
+
+func driveClosedPost() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "The gift drive isn't open yet.", http.StatusForbidden)
+	}
+}

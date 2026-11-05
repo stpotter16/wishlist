@@ -94,7 +94,20 @@ func run(
 	}
 	mailer := resend.New(mailerParams)
 
-	handler := handlers.NewServer(store, sessionManager, authenticator, turnstileSiteKey, humanVerifier, mailer, baseURL, time.Now)
+	// The drive stays closed unless explicitly opened, so forgetting the
+	// variable can't open it early.
+	var driveOpen bool
+	switch v := getenv("WISHLIST_DRIVE_OPEN"); v {
+	case "true":
+		driveOpen = true
+	case "", "false":
+		driveOpen = false
+	default:
+		return fmt.Errorf("WISHLIST_DRIVE_OPEN must be true or false, got %q", v)
+	}
+	log.Printf("Drive open: %v", driveOpen)
+
+	handler := handlers.NewServer(store, sessionManager, authenticator, turnstileSiteKey, humanVerifier, mailer, baseURL, driveOpen, time.Now)
 	port := getenv("PORT")
 	if port == "" {
 		port = "8080"

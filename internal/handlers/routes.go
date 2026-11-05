@@ -19,15 +19,28 @@ func addRoutes(
 	humanVerifier HumanVerifier,
 	mailer Mailer,
 	baseURL string,
+	driveOpen bool,
 	now func() time.Time,
 ) {
 	// Static
 	mux.Handle("GET /static/", http.StripPrefix("/static/", serveStaticFiles()))
 	mux.Handle("GET /favicon.ico", http.RedirectHandler("/static/assets/favicon.svg", http.StatusMovedPermanently))
 
+	// Public pages stay hidden until the drive opens.
+	driveOpenViews := middleware.NewDriveOpenMiddleware(middleware.DriveOpenParams{
+		IsOpen:         driveOpen,
+		SessionManager: sessionManager,
+		Closed:         driveClosedGet(),
+	})
+	driveOpenApi := middleware.NewDriveOpenMiddleware(middleware.DriveOpenParams{
+		IsOpen:         driveOpen,
+		SessionManager: sessionManager,
+		Closed:         driveClosedPost(),
+	})
+
 	// Views
-	mux.HandleFunc("GET /{$}", householdsGet(store))
-	mux.HandleFunc("GET /households/{id}", householdGet(store, turnstileSiteKey))
+	mux.Handle("GET /{$}", driveOpenViews(householdsGet(store)))
+	mux.Handle("GET /households/{id}", driveOpenViews(householdGet(store, turnstileSiteKey)))
 	mux.HandleFunc("GET /claims/{token}", claimGet(store))
 	mux.HandleFunc("GET /login", loginGet())
 
@@ -47,7 +60,7 @@ func addRoutes(
 		Window: time.Hour,
 		Now:    now,
 	})
-	mux.Handle("POST /households/{id}/claim", claimRateLimit(householdClaimPost(store, humanVerifier, mailer, baseURL)))
+	mux.Handle("POST /households/{id}/claim", driveOpenApi(claimRateLimit(householdClaimPost(store, humanVerifier, mailer, baseURL))))
 
 	// Auth
 	mux.HandleFunc("POST /login", loginPost(authenticator, sessionManager))

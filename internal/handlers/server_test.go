@@ -31,12 +31,13 @@ func newTestServerWithClock(t *testing.T, now func() time.Time) (http.Handler, d
 }
 
 // testServerParams overrides the test server's dependencies. Fields left
-// empty get a fixed clock, a bot check that passes, and a mailer that
-// succeeds.
+// empty get a fixed clock, a bot check that passes, a mailer that succeeds,
+// and an open drive.
 type testServerParams struct {
-	now      func() time.Time
-	verifier handlers.HumanVerifier
-	mailer   handlers.Mailer
+	now         func() time.Time
+	verifier    handlers.HumanVerifier
+	mailer      handlers.Mailer
+	driveClosed bool
 }
 
 // testBaseURL is the base URL the test server puts in emailed links.
@@ -109,7 +110,8 @@ func newTestServerWithParams(t *testing.T, params testServerParams) (http.Handle
 		t.Fatalf("sessions.New: %v", err)
 	}
 
-	return handlers.NewServer(store, sm, authentication.New(store), "dummy-site-key", params.verifier, params.mailer, testBaseURL, params.now), d
+	driveOpen := !params.driveClosed
+	return handlers.NewServer(store, sm, authentication.New(store), "dummy-site-key", params.verifier, params.mailer, testBaseURL, driveOpen, params.now), d
 }
 
 // loginAsAdmin seeds an admin and logs in through POST /login, returning the

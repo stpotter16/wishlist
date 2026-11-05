@@ -10,6 +10,7 @@ The current Fly deployment is a stakeholder test drive. It runs without Litestre
 
 1. **Set up the custom domain and Resend.** Point a subdomain at the app (`fly certs add <hostname>`, plus the DNS record Fly gives), and add the hostname to the Turnstile widget. Verify the sending domain in Resend with its SPF and DKIM records, and create an API key with "Sending access" restricted to that domain. Then set the `WISHLIST_RESEND_API_KEY`, `WISHLIST_EMAIL_FROM`, `WISHLIST_EMAIL_REPLY_TO`, and `WISHLIST_BASE_URL` secrets. The server refuses to start without them, so this has to happen before the next deploy.
 2. **Turn Litestream back on.** Create a bucket and set the `LITESTREAM_BUCKET`, `LITESTREAM_ENDPOINT`, `LITESTREAM_ACCESS_KEY_ID`, and `LITESTREAM_SECRET_ACCESS_KEY` secrets, so production data survives deploys and machine restarts. Without them, `docker-entrypoint` starts the app without replication.
+3. **Open the drive on launch day.** Do this after Litestream is on, since setting a secret restarts the machine. Run `fly secrets set WISHLIST_DRIVE_OPEN=true`. Until then, the public pages show only "The gift drive opens soon". See [Opening the drive](#opening-the-drive).
 
 ## Nice to have
 
@@ -112,6 +113,19 @@ Stakeholders decided on 2026-10-25 to keep claiming open, because codes, approva
 ## Lifecycle
 
 - The drive runs once a year. Each season starts by wiping the database, so the schema has no concept of seasons or campaigns.
+
+## Opening the drive
+
+Decided with the user on 2026-11-04. Admins enter households about a week before the drive opens, so the public pages stay hidden until then.
+
+- `WISHLIST_DRIVE_OPEN` opens the drive. It is closed unless the variable is `true`, so forgetting to set it can't open the drive early. Any value other than `true`, `false`, or empty stops the server from starting, so a typo can't silently keep the drive closed.
+- While the drive is closed, `middleware.NewDriveOpenMiddleware` gates `GET /`, `GET /households/{id}`, and `POST /households/{id}/claim`:
+  - Givers see a "The gift drive opens soon" page in place of the listing and household pages, so no recipient names show. Claims get `403`.
+  - Logged-in admins see the real pages and can claim, so they can check the public pages before launch.
+  - Admin routes and `/claims/{token}` are not gated.
+- Relying on an unpublicized URL wouldn't hide the pages. TLS certificates are published in public logs, which crawlers watch for new hostnames.
+- It is an environment variable rather than an admin setting, because only the developer flips it. Setting a Fly secret restarts the machine, which is safe only once Litestream is on.
+- Set it back to `false` to close the drive at the end of the season.
 - Tracking gift drop-off or delivery is out of scope for now.
 
 ## Routes
@@ -119,7 +133,7 @@ Stakeholders decided on 2026-10-25 to keep claiming open, because codes, approva
 - `GET` routes render HTML pages. Mutations are JSON endpoints that page scripts call with `fetch`, following the login page's pattern.
 - `http.CrossOriginProtection` in `NewServer` guards against CSRF by rejecting cross-origin `POST`, `PUT`, and `DELETE` requests from browsers. There are no CSRF tokens. See [Browser support](#browser-support) for what this assumes.
   - Never change state in a `GET` handler, since the protection skips safe methods.
-- Public routes (givers, no login):
+- Public routes (givers, no login). The first three are hidden until the [drive opens](#opening-the-drive):
   - `GET /`: unclaimed households, each shown by the head of the household's name (such as "Maria G.") and member labels.
   - `GET /households/{id}`: a household's members, sizes, preferences, needs, and wishes. Returns 404 once the household is claimed.
   - `POST /households/{id}/claim`: takes the giver's name, email, phone, and Turnstile token; responds with the giver's private link and [emails](#emailing-giver-links) the giver the tips and wishlist. Returns 403 if the [Turnstile check](#claim-gating) fails, 503 if Cloudflare can't be reached, 409 if the household is already claimed or the email has already claimed a household, and 429 past the [rate limit](#claim-gating).
@@ -167,6 +181,7 @@ Stakeholders decided on 2026-10-25 to keep claiming open, because codes, approva
   - `WISHLIST_EMAIL_FROM`: the sender on giver emails, such as `Wishlist <noreply@example.org>`. It must be on a domain verified in Resend, or Resend rejects the send. The mailbox doesn't need to exist.
   - `WISHLIST_EMAIL_REPLY_TO`: where givers' replies go. It can be any address the organizers read, on any domain, since Resend doesn't verify it.
   - `WISHLIST_TURNSTILE_SITE_KEY` and `WISHLIST_TURNSTILE_SECRET_KEY`: the Cloudflare Turnstile widget's keys. `.env.example` uses Cloudflare's test keys, which always pass, so local development needs no Cloudflare account.
+  - `WISHLIST_DRIVE_OPEN` (optional): `true` opens the public pages to givers. Unset or `false` keeps them closed. See [Opening the drive](#opening-the-drive).
   - `PORT` (optional): listen port, defaults to `8080`.
 - Copy `.env.example` to `.env`, fill it in, and `source .env` before running the server.
 - Production also reads `LITESTREAM_BUCKET`, `LITESTREAM_ENDPOINT`, `LITESTREAM_ACCESS_KEY_ID`, and `LITESTREAM_SECRET_ACCESS_KEY`. When `LITESTREAM_BUCKET` is unset, `docker-entrypoint` starts the app without replication.
