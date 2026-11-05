@@ -162,7 +162,7 @@ func claimEmailText(email claimEmail) string {
 	if email.IsNewLink {
 		fmt.Fprintf(&b, "Here is your new private link to %s's wishlists. Your old link no longer works.\n\n", email.HeadName)
 	} else {
-		fmt.Fprintf(&b, "Thank you for adopting %s!\n\nHere is your private link to the Blackbird Place Resident/Family's wishlists:\n\n", email.HeadName)
+		fmt.Fprintf(&b, "Thank you for adopting %s!\n\n", email.HeadName)
 	}
 	fmt.Fprintf(&b, "%s\n\n", email.Link)
 	b.WriteString("Keep this link to yourself. Anyone who has it can see the Blackbird Place Resident/Family.\n\n")
