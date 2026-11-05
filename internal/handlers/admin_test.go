@@ -69,6 +69,71 @@ func TestAdminListsAllHouseholdsWithClaimStatus(t *testing.T) {
 	}
 }
 
+func TestAdminReportListsGiverContactDetails(t *testing.T) {
+	server, d := newTestServer(t)
+	cookie := loginAsAdmin(t, server, d)
+
+	// Household 1 is unclaimed. Household 2 is claimed. Household 3 has no
+	// members.
+	if _, err := d.Exec(context.Background(), `
+	INSERT INTO household (id, kind, created_time, last_modified_time) VALUES
+		(1, 'family', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+		(2, 'single', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+		(3, 'family', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+	INSERT INTO household_member
+		(household_id, first_name, last_initial, label, created_time, last_modified_time)
+	VALUES
+		(1, 'Maria', 'G', 'Mom', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+		(2, 'Rosa', 'M', 'Woman', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+	INSERT INTO claim (
+		household_id, giver_name, giver_email, giver_phone, access_token_hash,
+		created_time
+	) VALUES (
+		2, 'Pat Jones', 'giver@example.com', '555-0100', 'dummy-hash',
+		'2026-01-01T00:00:00Z'
+	);
+	`); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/admin/report", nil)
+	req.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	server.ServeHTTP(rec, req)
+
+	if got, want := rec.Code, http.StatusOK; got != want {
+		t.Fatalf("status=%d, want=%d", got, want)
+	}
+	// Collapse whitespace like a browser does, so template formatting doesn't
+	// matter.
+	body := strings.Join(strings.Fields(rec.Body.String()), " ")
+	for _, want := range []string{
+		"Maria G.",
+		"Unclaimed",
+		"Rosa M.",
+		"Pat Jones",
+		"giver@example.com",
+		"555-0100",
+		"Blackbird Place Resident/Family 3",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("body is missing %q", want)
+		}
+	}
+}
+
+func TestAdminReportRequiresLogin(t *testing.T) {
+	server, _ := newTestServer(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/admin/report", nil)
+	rec := httptest.NewRecorder()
+	server.ServeHTTP(rec, req)
+
+	if got, want := rec.Code, http.StatusTemporaryRedirect; got != want {
+		t.Errorf("status=%d, want=%d", got, want)
+	}
+}
+
 func TestAdminNewHouseholdPageRenders(t *testing.T) {
 	server, d := newTestServer(t)
 	cookie := loginAsAdmin(t, server, d)

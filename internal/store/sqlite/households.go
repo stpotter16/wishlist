@@ -387,7 +387,7 @@ func insertWishlistItems(ctx context.Context, tx *sql.Tx, memberID int64, kind s
 
 // ListHouseholds returns every household, including claimed households and households
 // with no members, ordered by household ID. Claimed households include the giver's
-// name and email.
+// name, email, and phone.
 func (s Store) ListHouseholds(ctx context.Context) ([]types.HouseholdSummary, error) {
 	rows, err := s.db.Query(ctx, `
 	SELECT
@@ -397,7 +397,8 @@ func (s Store) ListHouseholds(ctx context.Context) ([]types.HouseholdSummary, er
 		household_member.last_initial,
 		household_member.label,
 		claim.giver_name,
-		claim.giver_email
+		claim.giver_email,
+		claim.giver_phone
 	FROM
 		household
 	LEFT JOIN household_member ON household_member.household_id = household.id
@@ -420,7 +421,8 @@ func (s Store) ListHouseholds(ctx context.Context) ([]types.HouseholdSummary, er
 		var memberLabel sql.NullString
 		var giverName sql.NullString
 		var giverEmail sql.NullString
-		if err := rows.Scan(&householdID, &kind, &firstName, &lastInitial, &memberLabel, &giverName, &giverEmail); err != nil {
+		var giverPhone sql.NullString
+		if err := rows.Scan(&householdID, &kind, &firstName, &lastInitial, &memberLabel, &giverName, &giverEmail, &giverPhone); err != nil {
 			return nil, err
 		}
 		// Members come in ID order, so a household's first row is its head.
@@ -436,6 +438,7 @@ func (s Store) ListHouseholds(ctx context.Context) ([]types.HouseholdSummary, er
 				IsClaimed:  giverName.Valid,
 				GiverName:  giverName.String,
 				GiverEmail: giverEmail.String,
+				GiverPhone: giverPhone.String,
 			})
 		}
 		if memberLabel.Valid {

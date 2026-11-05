@@ -53,7 +53,7 @@ The current Fly deployment is a stakeholder test drive. It runs without Litestre
 - A giver claims an entire household, not individual items or members.
 - Claims are one-to-one: each household has at most one giver, and each giver claims one household.
 - Claiming a household requires the giver's name, email, and phone.
-  - Only admins can read giver contact details.
+  - Only admins can read giver contact details, on the admin household page and the giver report (`GET /admin/report`).
 - Claimed households disappear from the public household listing.
 - Only admins can release a claim. Givers cannot unclaim a household.
 - Browsing and claiming unclaimed households requires no login or access code. See [Claim gating](#claim-gating).
@@ -141,6 +141,7 @@ Decided with the user on 2026-11-04. Admins enter households about a week before
 - Admin routes (session required):
   - `GET /login`, `POST /login`, `POST /logout`.
   - `GET /admin`: every household with its claim status and, if claimed, the giver's name and email.
+  - `GET /admin/report`: a print-friendly table of every household, titled by the head of the household's name as on the dashboard cards, with its giver's name, email, and phone, or "Unclaimed". Users asked for it on 2026-11-04. Printing always uses the light theme (`input.css` applies the dark tokens on `screen` only), and `print:hidden` drops the app's bottom nav and the page's buttons.
   - `GET /admin/households/new`: one form for transcribing a household's intake sheets, with a section per member.
   - `POST /admin/households`: creates a household with all its members and wishlist items in one transaction. Responds with the new household's ID.
   - `GET /admin/households/{id}`: shows a household's members, its claim status, and the giver's contact details if claimed. It hosts the edit link and the release, new-link, and delete actions.

@@ -47,6 +47,7 @@ func addRoutes(
 	// Views that need authentication
 	viewAuthRequired := middleware.NewViewAuthenticationRequiredMiddleware(sessionManager)
 	mux.Handle("GET /admin", viewAuthRequired(adminGet(store)))
+	mux.Handle("GET /admin/report", viewAuthRequired(adminReportGet(store)))
 	mux.Handle("GET /admin/households/new", viewAuthRequired(adminNewHouseholdGet()))
 	mux.Handle("GET /admin/households/{id}", viewAuthRequired(adminHouseholdGet(store)))
 	mux.Handle("GET /admin/households/{id}/edit", viewAuthRequired(adminEditHouseholdGet(store)))

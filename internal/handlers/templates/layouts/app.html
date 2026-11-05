@@ -1,11 +1,13 @@
 {{ define "content" }}
   <main
-    class="{{ block "main-width" . }}max-w-lg{{ end }} mx-auto px-4 pt-4 pb-24"
+    class="{{ block "main-width" . }}
+      max-w-lg
+    {{ end }} mx-auto px-4 pt-4 pb-24 print:max-w-none print:p-0"
   >
     {{ block "page-content" . }}{{ end }}
   </main>
   <nav
-    class="fixed inset-x-0 bottom-0 flex h-16 items-stretch border-t border-border bg-page"
+    class="fixed inset-x-0 bottom-0 flex h-16 items-stretch border-t border-border bg-page print:hidden"
   >
     <a
       href="/admin"

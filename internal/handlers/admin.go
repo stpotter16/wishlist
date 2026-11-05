@@ -54,6 +54,47 @@ func adminGet(s store.Store) http.HandlerFunc {
 	}
 }
 
+// adminReportGet renders a print-friendly table of every household and its
+// giver's contact details, for organizers who work from paper.
+func adminReportGet(s store.Store) http.HandlerFunc {
+	t := template.Must(
+		template.New("base.html").
+			ParseFS(
+				templateFS,
+				"templates/layouts/base.html",
+				"templates/layouts/app.html",
+				"templates/pages/admin-report.html",
+			))
+	return func(w http.ResponseWriter, r *http.Request) {
+		nonce, err := extractCspNonceOnly(r)
+		if err != nil {
+			log.Printf("Could not extract csp nonce from ctx: %v", err)
+			renderAppError(w, r, http.StatusInternalServerError)
+			return
+		}
+
+		households, err := s.ListHouseholds(r.Context())
+		if err != nil {
+			log.Printf("adminReportGet: failed to list households: %v", err)
+			renderAppError(w, r, http.StatusInternalServerError)
+			return
+		}
+
+		props := struct {
+			viewProps
+			Households []types.HouseholdSummary
+		}{
+			viewProps:  viewProps{CspNonce: nonce, ActivePage: "dashboard"},
+			Households: households,
+		}
+
+		if err := t.Execute(w, props); err != nil {
+			log.Printf("Could not create admin report page: %v", err)
+			renderAppError(w, r, http.StatusInternalServerError)
+		}
+	}
+}
+
 // householdFormProps configures the shared new and edit household form.
 type householdFormProps struct {
 	viewProps

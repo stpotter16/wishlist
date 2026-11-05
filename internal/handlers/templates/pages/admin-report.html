@@ -1,0 +1,63 @@
+{{ define "title" }}Giver Report{{ end }}
+{{ define "script-tags" }}
+  <script type="module" nonce="{{ .CspNonce }}">
+    document.getElementById("print").addEventListener("click", () => {
+      window.print();
+    });
+  </script>
+{{ end }}
+{{ define "main-width" }}max-w-lg lg:max-w-5xl{{ end }}
+{{ define "page-content" }}
+  <div class="flex items-center justify-between gap-4 print:hidden">
+    <a href="/admin" class="text-sm font-semibold text-accent hover:underline"
+      >&larr; Dashboard</a
+    >
+    <button
+      id="print"
+      type="button"
+      class="inline-flex items-center justify-center rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+    >
+      Print
+    </button>
+  </div>
+  <h1 class="mt-4 text-2xl font-bold print:mt-0">Giver Report</h1>
+  {{ if .Households }}
+    <div class="mt-4 overflow-x-auto print:overflow-visible">
+      <table class="w-full border-collapse text-left text-sm">
+        <thead>
+          <tr class="border-b-2 border-fg">
+            <th scope="col" class="py-2 pr-4 font-semibold">
+              Blackbird Place Resident/Family
+            </th>
+            <th scope="col" class="py-2 pr-4 font-semibold">Giver</th>
+            <th scope="col" class="py-2 pr-4 font-semibold">Email</th>
+            <th scope="col" class="py-2 font-semibold">Phone</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{ range .Households }}
+            <tr class="break-inside-avoid border-b border-border align-top">
+              <td class="py-2 pr-4 font-semibold">
+                {{ with .HeadName }}
+                  {{ . }}
+                {{ else }}
+                  Blackbird Place Resident/Family
+                  {{ .ID }}
+                {{ end }}
+              </td>
+              {{ if .IsClaimed }}
+                <td class="py-2 pr-4">{{ .GiverName }}</td>
+                <td class="py-2 pr-4 break-all">{{ .GiverEmail }}</td>
+                <td class="py-2 whitespace-nowrap">{{ .GiverPhone }}</td>
+              {{ else }}
+                <td colspan="3" class="py-2 text-muted italic">Unclaimed</td>
+              {{ end }}
+            </tr>
+          {{ end }}
+        </tbody>
+      </table>
+    </div>
+  {{ else }}
+    <p class="mt-4 text-muted">No Blackbird Place Residents/Families yet.</p>
+  {{ end }}
+{{ end }}

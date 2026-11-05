@@ -28,10 +28,12 @@ type HouseholdSummary struct {
 	HeadName     string
 	MemberLabels []string
 	IsClaimed    bool
-	// GiverName and GiverEmail are set only in the admin listing, so admins
-	// can spot claims from givers they don't recognize.
+	// GiverName, GiverEmail, and GiverPhone are set only in the admin
+	// listing, so admins can spot claims from givers they don't recognize and
+	// print the giver report.
 	GiverName  string
 	GiverEmail string
+	GiverPhone string
 }
 
 // Household is the full view of a household and its members' wishlists. The

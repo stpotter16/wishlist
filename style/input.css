@@ -35,7 +35,9 @@
   --color-danger-surface: oklch(0.94 0.035 25);
 }
 
-@media (prefers-color-scheme: dark) {
+/* Print in the light theme even when the screen is dark, so paper gets dark text
+   on white. */
+@media screen and (prefers-color-scheme: dark) {
   :root {
     --color-page: oklch(0.18 0.025 160);
     --color-surface: oklch(0.23 0.03 160);
