@@ -57,7 +57,7 @@ The current Fly deployment is a stakeholder test drive. It runs without Litestre
 - Only admins can release a claim. Givers cannot unclaim a household.
 - Browsing and claiming unclaimed households requires no login or access code. See [Claim gating](#claim-gating).
 - Givers return to their claimed household through a private link that carries a random token.
-  - Givers also get the link by email. See [Emailing giver links](#emailing-giver-links).
+  - Givers get the link on screen after claiming, and by email only when an admin issues a new one. See [Emailing giver links](#emailing-giver-links).
   - The database stores only the SHA-256 hash of each token (`internal/auth/token.go`).
   - Never log a token. The request logger redacts paths under `/claims/`.
   - Pages under `/claims/` send `Cache-Control: no-store` and `Referrer-Policy: no-referrer`.
@@ -67,17 +67,17 @@ The current Fly deployment is a stakeholder test drive. It runs without Litestre
 Decided with the user from 2026-10-22 to 2026-10-27.
 
 - The app sends email through Resend's HTTP API (`internal/resend`), with no new Go dependency.
-- On claim, the giver gets an email with the link, and the link still shows on screen. Turnstile already guards against bots, so the email gives givers a copy to find later rather than acting as a gate.
+- On claim, the giver gets an email with the organizers' tips and a copy of the wishlist, but not the link, which shows on screen. The link was dropped from the claim email on 2026-11-04 after feedback from givers.
   - Gated options were rejected as the kind of barrier the [claim gating decision](#claim-gating) avoids: showing the link only in the email, or holding the claim until the giver confirms by email.
 - Admins' "Issue new link" emails the new link to the giver and also shows it to the admin, in case the giver's email bounces. The response's `emailSent` tells the page which message to show.
 - If sending fails, the claim stands and the failure is logged. Rolling back would cost a giver their household over an email problem, and an admin can re-send with "Issue new link".
 - The email has an HTML body and a plain-text body, and Resend sends both. Both render from one `claimEmail` struct (`newClaimEmail` in `internal/handlers/emails.go`), so they show the same content.
   - The HTML is a Go `html/template` in `templates/emails/claim.html`, kept in the repo rather than in Resend's template feature. Resend templates only substitute strings and numbers, with no loops, so the wishlist would still have to be built in Go. They would also need a Full access API key to sync.
   - Many email clients strip `<style>` tags or don't support `oklch()`. Style the email inline, with the hex versions of `input.css`'s light-theme tokens, and use tables for layout. The email has no dark variant.
-  - The email names the household by the head of the household's name (in the subject too), and has the private link, a note that replies reach the organizers, the organizers' tips for givers (`giverTips`), and the household's wishlist: each member's needs, wishes, sizes, and preferences.
+  - The email names the household by the head of the household's name (in the subject too), and has the organizers' tips for givers (`giverTips`) and the household's wishlist: each member's needs, wishes, sizes, and preferences. Only the "Issue new link" email has the private link, as a button and a pastable URL.
   - The tips include the drop-off deadline, which is hardcoded. Update it each season.
   - Members appear by name and label, such as "Ana (Child, 7, Girl)". An email can be forwarded or kept for years, so this spreads recipient names further than the pages do. Stakeholders accepted that risk on 2026-10-27.
-  - The wishlist in the email is a snapshot. Admin edits don't reach it, so the email points givers to the private link for the current list.
+  - The wishlist in the email is a snapshot. Admin edits don't reach it, so the private link has the current list.
 - The from and reply-to addresses are config, not code, since Resend takes both on each send.
   - The from address must be on a domain verified in Resend. The mailbox itself doesn't need to exist, so `noreply@` works.
   - The reply-to can be any address the organizers read, on any domain. Resend doesn't verify it.
@@ -122,7 +122,7 @@ Stakeholders decided on 2026-10-25 to keep claiming open, because codes, approva
 - Public routes (givers, no login):
   - `GET /`: unclaimed households, each shown by the head of the household's name (such as "Maria G.") and member labels.
   - `GET /households/{id}`: a household's members, sizes, preferences, needs, and wishes. Returns 404 once the household is claimed.
-  - `POST /households/{id}/claim`: takes the giver's name, email, phone, and Turnstile token; responds with the giver's private link and [emails it](#emailing-giver-links) to the giver. Returns 403 if the [Turnstile check](#claim-gating) fails, 503 if Cloudflare can't be reached, 409 if the household is already claimed or the email has already claimed a household, and 429 past the [rate limit](#claim-gating).
+  - `POST /households/{id}/claim`: takes the giver's name, email, phone, and Turnstile token; responds with the giver's private link and [emails](#emailing-giver-links) the giver the tips and wishlist. Returns 403 if the [Turnstile check](#claim-gating) fails, 503 if Cloudflare can't be reached, 409 if the household is already claimed or the email has already claimed a household, and 429 past the [rate limit](#claim-gating).
   - `GET /claims/{token}`: the giver's private view of their household.
 - Admin routes (session required):
   - `GET /login`, `POST /login`, `POST /logout`.

@@ -335,7 +335,7 @@ func TestClaimHouseholdRequiresBotCheck(t *testing.T) {
 	}
 }
 
-func TestClaimHouseholdEmailsGiverTheirLinkAndWishlist(t *testing.T) {
+func TestClaimHouseholdEmailsGiverTheirWishlist(t *testing.T) {
 	for _, tt := range []struct {
 		explanation string
 		mailer      *fakeMailer
@@ -397,12 +397,12 @@ func TestClaimHouseholdEmailsGiverTheirLinkAndWishlist(t *testing.T) {
 			if got, want := email.to, "giver@example.com"; got != want {
 				t.Errorf("to=%q, want=%q", got, want)
 			}
-			if got, want := email.subject, "Your link for Maria G."; got != want {
+			if got, want := email.subject, "Thank you for adopting Maria G.!"; got != want {
 				t.Errorf("subject=%q, want=%q", got, want)
 			}
 			for _, want := range []string{
-				testBaseURL + claim.URL,
 				"Thank you for adopting Maria G.!",
+				"Below is a copy of your wishlist.",
 				"== Blackbird Place Christmas Gift Drive Helpful Tips ==",
 				"- Plan to spend at least $50/family member on your list\n",
 				"- Please reach out to us at outreach@goodshepherdathens.com if you have any questions.",
@@ -420,8 +420,8 @@ func TestClaimHouseholdEmailsGiverTheirLinkAndWishlist(t *testing.T) {
 
 			html := strings.Join(strings.Fields(email.html), " ")
 			for _, want := range []string{
-				`href="` + testBaseURL + claim.URL + `"`,
 				"Thank you for adopting Maria G.!",
+				"Below is a copy of your wishlist.",
 				"Blackbird Place Christmas Gift Drive Helpful Tips",
 				"Plan to spend <strong>at least $50/family member on your list</strong>",
 				"<strong>Please WRAP gifts intended for the Blackbird Place resident</strong>/mother of the family",
@@ -439,6 +439,14 @@ func TestClaimHouseholdEmailsGiverTheirLinkAndWishlist(t *testing.T) {
 				if !strings.Contains(html, want) {
 					t.Errorf("email html is missing %q:\n%s", want, html)
 				}
+			}
+
+			// The claim page already shows the link, so the email leaves it out.
+			if strings.Contains(email.text, claim.URL) {
+				t.Errorf("email text has the private link:\n%s", email.text)
+			}
+			if strings.Contains(email.html, claim.URL) {
+				t.Errorf("email html has the private link:\n%s", email.html)
 			}
 		})
 	}
