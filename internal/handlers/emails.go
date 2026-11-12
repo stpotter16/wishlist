@@ -164,6 +164,7 @@ func claimEmailText(email claimEmail) string {
 		fmt.Fprintf(&b, "%s\n", email.Link)
 	} else {
 		fmt.Fprintf(&b, "Thank you for adopting %s!\n\n", email.HeadName)
+		b.WriteString("** Don't forget to pick up your red gift giver packet from the outreach table outside of the conference room **\n\n")
 		b.WriteString("Below is a copy of your wishlist.\n")
 	}
 
