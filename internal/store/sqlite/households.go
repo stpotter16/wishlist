@@ -64,14 +64,34 @@ func (s Store) ListUnclaimedHouseholds(ctx context.Context) ([]types.HouseholdSu
 		return nil, err
 	}
 
+	sortByHeadName(households)
+
+	return households, nil
+}
+
+// compareHasNoHead orders households with a head before households without one.
+func compareHasNoHead(a, b types.HouseholdSummary) int {
+	switch {
+	case a.HeadName == "" && b.HeadName != "":
+		return 1
+	case a.HeadName != "" && b.HeadName == "":
+		return -1
+	default:
+		return 0
+	}
+}
+
+// sortByHeadName orders households alphabetically by the head of the household's
+// name, ignoring case, so by first name, then last initial. Households with no
+// members have no head, so they go last. Ties keep household ID order.
+func sortByHeadName(households []types.HouseholdSummary) {
 	slices.SortFunc(households, func(a, b types.HouseholdSummary) int {
 		return cmp.Or(
+			compareHasNoHead(a, b),
 			strings.Compare(strings.ToLower(a.HeadName), strings.ToLower(b.HeadName)),
 			cmp.Compare(a.ID, b.ID),
 		)
 	})
-
-	return households, nil
 }
 
 // GetUnclaimedHousehold returns a household with its members and their wishlists.
@@ -398,8 +418,8 @@ func insertWishlistItems(ctx context.Context, tx *sql.Tx, memberID int64, kind s
 }
 
 // ListHouseholds returns every household, including claimed households and households
-// with no members, ordered by household ID. Claimed households include the giver's
-// name, email, and phone.
+// with no members, ordered like ListUnclaimedHouseholds, with households that have
+// no members last. Claimed households include the giver's name, email, and phone.
 func (s Store) ListHouseholds(ctx context.Context) ([]types.HouseholdSummary, error) {
 	rows, err := s.db.Query(ctx, `
 	SELECT
@@ -461,6 +481,8 @@ func (s Store) ListHouseholds(ctx context.Context) ([]types.HouseholdSummary, er
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
+
+	sortByHeadName(households)
 
 	return households, nil
 }

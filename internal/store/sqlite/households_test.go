@@ -308,18 +308,22 @@ func TestListHouseholds(t *testing.T) {
 	s, d := newTestStore(t)
 	ctx := context.Background()
 
-	// Household 1 is unclaimed. Household 2 is claimed. Household 3 has no members.
+	// Household 1 is unclaimed. Household 2 is claimed. Household 3 has no
+	// members. Household 4's head sorts before household 1's. The listing orders
+	// households by the head's name and puts households with no members last.
 	if _, err := d.Exec(ctx, `
 	INSERT INTO household (id, kind, created_time, last_modified_time) VALUES
 		(1, 'family', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
 		(2, 'single', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-		(3, 'family', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+		(3, 'family', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+		(4, 'single', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
 	INSERT INTO household_member
 		(household_id, first_name, last_initial, label, created_time, last_modified_time)
 	VALUES
 		(1, 'Maria', 'G', 'Mom', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
 		(1, 'Sofia', '', 'Child, 7', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-		(2, 'Rosa', 'M', 'Woman', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+		(2, 'Rosa', 'M', 'Woman', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+		(4, 'Ana', 'B', 'Woman', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
 	INSERT INTO claim (
 		household_id, giver_name, giver_email, giver_phone, access_token_hash,
 		created_time
@@ -337,6 +341,7 @@ func TestListHouseholds(t *testing.T) {
 	}
 
 	want := []types.HouseholdSummary{
+		{ID: 4, Kind: types.HouseholdKindSingle, HeadName: "Ana B.", MemberLabels: []string{"Woman"}, IsClaimed: false},
 		{ID: 1, Kind: types.HouseholdKindFamily, HeadName: "Maria G.", MemberLabels: []string{"Mom", "Child, 7"}, IsClaimed: false},
 		{ID: 2, Kind: types.HouseholdKindSingle, HeadName: "Rosa M.", MemberLabels: []string{"Woman"}, IsClaimed: true, GiverName: "Giver", GiverEmail: "giver@example.com", GiverPhone: "555-0100"},
 		{ID: 3, Kind: types.HouseholdKindFamily, MemberLabels: nil, IsClaimed: false},
