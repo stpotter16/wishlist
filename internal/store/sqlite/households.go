@@ -1,10 +1,13 @@
 package sqlite
 
 import (
+	"cmp"
 	"context"
 	"database/sql"
 	"errors"
 	"fmt"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/stpotter16/wishlist/internal/store"
@@ -12,7 +15,9 @@ import (
 )
 
 // ListUnclaimedHouseholds returns every household without a claim that has at least
-// one member, ordered by household ID.
+// one member, ordered alphabetically by the head of the household's name, so
+// first name, then last initial. Households whose heads share a name stay in
+// household ID order.
 func (s Store) ListUnclaimedHouseholds(ctx context.Context) ([]types.HouseholdSummary, error) {
 	rows, err := s.db.Query(ctx, `
 	SELECT
@@ -58,6 +63,13 @@ func (s Store) ListUnclaimedHouseholds(ctx context.Context) ([]types.HouseholdSu
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
+
+	slices.SortFunc(households, func(a, b types.HouseholdSummary) int {
+		return cmp.Or(
+			strings.Compare(strings.ToLower(a.HeadName), strings.ToLower(b.HeadName)),
+			cmp.Compare(a.ID, b.ID),
+		)
+	})
 
 	return households, nil
 }

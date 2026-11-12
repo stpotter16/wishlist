@@ -14,21 +14,26 @@ func TestListUnclaimedHouseholds(t *testing.T) {
 	s, d := newTestStore(t)
 	ctx := context.Background()
 
-	// Household 1 and 4 are unclaimed with members. Household 2 is claimed.
-	// Household 3 has no members yet.
+	// Households 1, 4, 5, and 6 are unclaimed with members. Household 2 is
+	// claimed. Household 3 has no members yet. The listing orders households by
+	// the head's name, ignoring case, and breaks ties by household ID.
 	if _, err := d.Exec(ctx, `
 	INSERT INTO household (id, kind, created_time, last_modified_time) VALUES
 		(1, 'family', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
 		(2, 'family', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
 		(3, 'family', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-		(4, 'single', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+		(4, 'single', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+		(5, 'single', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+		(6, 'single', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
 	INSERT INTO household_member
 		(household_id, first_name, last_initial, label, created_time, last_modified_time)
 	VALUES
 		(1, 'Maria', 'G', 'Mom', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
 		(1, 'Sofia', '', 'Child, 7', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
 		(2, 'Dan', 'R', 'Dad', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-		(4, 'Rosa', 'M', 'Woman', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+		(4, 'Rosa', 'M', 'Woman', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+		(5, 'ana', 'B', 'Woman', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+		(6, 'Maria', 'A', 'Woman', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
 	INSERT INTO claim (
 		household_id, giver_name, giver_email, giver_phone, access_token_hash,
 		created_time
@@ -46,6 +51,8 @@ func TestListUnclaimedHouseholds(t *testing.T) {
 	}
 
 	want := []types.HouseholdSummary{
+		{ID: 5, Kind: types.HouseholdKindSingle, HeadName: "ana B.", MemberLabels: []string{"Woman"}},
+		{ID: 6, Kind: types.HouseholdKindSingle, HeadName: "Maria A.", MemberLabels: []string{"Woman"}},
 		{ID: 1, Kind: types.HouseholdKindFamily, HeadName: "Maria G.", MemberLabels: []string{"Mom", "Child, 7"}},
 		{ID: 4, Kind: types.HouseholdKindSingle, HeadName: "Rosa M.", MemberLabels: []string{"Woman"}},
 	}
