@@ -5,7 +5,41 @@
     <h1 class="text-2xl font-bold text-festive">
       Blackbird Place Christmas Gift Drive
     </h1>
-    <p class="mt-1 text-muted">
+    <section class="mt-4 rounded-xl bg-surface p-5 shadow-sm">
+      <h2 class="text-center text-lg font-semibold text-festive">
+        Blackbird Place Christmas Gift Drive Helpful Tips
+      </h2>
+      <ul class="mt-2 list-disc space-y-2 pl-5">
+        {{ range .Tips }}
+          <li>
+            {{- range .Parts -}}
+              {{- if .Bold -}}
+                <strong>{{ .Text }}</strong>
+              {{- else -}}
+                {{ .Text }}
+              {{- end -}}
+            {{- end -}}
+            {{ if .Note }}
+              <span class="mt-1 block pl-6 text-muted">{{ .Note }}</span>
+            {{ end }}
+          </li>
+        {{ end }}
+        <li>
+          Please reach out to us at
+          <a
+            href="mailto:{{ .OrganizerEmail }}"
+            class="text-accent underline hover:text-accent-hover"
+            >{{ .OrganizerEmail }}</a
+          >
+          if you have any questions.
+        </li>
+      </ul>
+      <p class="mt-4 text-center">
+        Thank you for adopting a Blackbird Place resident and her family for
+        Christmas!
+      </p>
+    </section>
+    <p class="mt-6 text-muted">
       Select a resident/family from the list below to view gift ideas tailored
       to their needs and wishes.
     </p>

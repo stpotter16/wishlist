@@ -36,10 +36,14 @@ func householdsGet(s store.Store) http.HandlerFunc {
 
 		props := struct {
 			viewProps
-			Households []types.HouseholdSummary
+			Households     []types.HouseholdSummary
+			Tips           []giverTip
+			OrganizerEmail string
 		}{
-			viewProps:  viewProps{CspNonce: nonce},
-			Households: households,
+			viewProps:      viewProps{CspNonce: nonce},
+			Households:     households,
+			Tips:           giverTips,
+			OrganizerEmail: organizerEmail,
 		}
 
 		if err := t.Execute(w, props); err != nil {

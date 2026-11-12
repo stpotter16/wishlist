@@ -20,10 +20,10 @@ type Mailer interface {
 
 var claimEmailTmpl = template.Must(template.ParseFS(templateFS, "templates/emails/claim.html"))
 
-// giverTips are the drive organizers' instructions for givers, which both
-// bodies of the claim email show above the wishlists. The wording and bold
-// phrases follow the organizers' tip sheet. Update the drop-off date each
-// season.
+// giverTips are the drive organizers' instructions for givers, which the public
+// listing shows under its heading and both bodies of the claim email show above
+// the wishlists. The wording and bold phrases follow the organizers' tip sheet.
+// Update the drop-off date each season.
 var giverTips = []giverTip{
 	{
 		Parts: []tipPart{{Text: "Plan to spend "}, {Text: "at least $50/family member on your list", Bold: true}},
